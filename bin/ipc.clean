@@ -1,0 +1,16 @@
+#!/bin/bash
+
+for i in `ipcs -m|grep -w $LOGNAME|awk '{print $2}'`
+do
+    ipcrm -m $i
+done
+
+for i in `ipcs -s|grep -w $LOGNAME|awk '{print $2}'`
+do
+    ipcrm -s $i
+done
+
+for i in `ps -u $LOGNAME|grep LIS.tvm|awk '{print $1}'`
+do
+    kill -9 $PID
+done
