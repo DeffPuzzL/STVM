@@ -19,10 +19,12 @@ DETVM=$(OUTBIN)/detvm
 all: $(TARGET) $(TARDLL) $(STVM) $(DETVM) clean
 $(TARGET): $(OBJFILE)
 	rm -f $@
+	mkdir -p $(OUTLIB)
 	$(AR) -cr $@ $(OBJFILE)
 
 $(TARDLL): $(OBJFILE)
 	$(LD) $(LDFLAG) -o $@ $(OBJFILE) 
+	mkdir -p $(OUTLIB)
 	rm -f $(TARVER)
 	$(LN) -s $@ $(TARVER)
 
