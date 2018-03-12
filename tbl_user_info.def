@@ -1,0 +1,16 @@
+set TABLE=20
+set TABLESPACE=10000
+
+create table TBL_USER_INFO
+(
+    acct_id	long,
+    user_no	char(21),
+    user_type	char[2],
+    user_nm	char[81],
+    user_addr	char[161],
+    user_phone	char[31]
+);
+
+-- Create indexes 
+create unique index (user_no, user_type);
+create index  (acct_id);
