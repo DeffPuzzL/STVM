@@ -637,7 +637,7 @@ void    vCreateStruck(TblDef *pstTde, bool bf)
     if(bf)
     {
         fprintf(stdout, "\nset TABLE=%d\n", pstTde->m_table);
-        fprintf(stdout, "set TABLESPACE=%d\n\n", pstTde->m_lMaxRow);
+        fprintf(stdout, "set TABLESPACE=%ld\n\n", pstTde->m_lMaxRow);
     }
 
     fprintf(stdout, "typedef struct __%s\n{\n", supper(pstTde->m_szTable));
@@ -645,7 +645,7 @@ void    vCreateStruck(TblDef *pstTde, bool bf)
     {
         pv = &pstTde->m_stKey[i];
         if(FIELD_CHAR == pv->m_lAttr)
-            fprintf(stdout, "    char    %s[%d];\n", pv->m_szField, pv->m_lLen);
+            fprintf(stdout, "    char    %s[%ld];\n", pv->m_szField, pv->m_lLen);
         else if(FIELD_LONG == pv->m_lAttr)
         {
             switch(pv->m_lLen)
@@ -860,7 +860,7 @@ long	lCreateByFile(char *pszFile)
 	if(NULL == (fp = fopen(pszFile, "r")))
 	{
 		TFree(pszFile);
-        fprintf(stderr, "open file %s error, %s\n", strerror(errno));
+        fprintf(stderr, "open file %s error, %s\n", pszFile, strerror(errno));
 		return RC_FAIL;
 	}
 
@@ -3821,7 +3821,7 @@ void    vConnectDomain(char *pszDomain, TBoot *pstBoot)
     }
 
     conditinit(pstSavm, stDomain, SYS_TVM_DOMAIN);
-    stringsetv(pstSavm, stDomain, m_szOwner, pszDomain);
+    stringset(pstSavm, stDomain, m_szOwner, pszDomain);
     decorate(pstSavm, TDomain, m_szOwner, FIRST_ROW);
     if(RC_SUCC != lSelect(pstSavm, (void *)&stDomain))
     {
@@ -3868,7 +3868,7 @@ void    vPullTableDomain(char *pszParam)
     }
 
     conditinit(pstSavm, stDomain, SYS_TVM_DOMAIN);
-    stringsetv(pstSavm, stDomain, m_szOwner, sgetvalue(pszParam, "/", 1));
+    stringset(pstSavm, stDomain, m_szOwner, sgetvalue(pszParam, "/", 1));
     if(!strlen(strimall(stDomain.m_szOwner)))
     {
         fprintf(stderr, "*illegal domain name\n");
@@ -3880,7 +3880,7 @@ void    vPullTableDomain(char *pszParam)
     strncpy(szTable, sgetvalue(szCmd, " ", 1), sizeof(szTable));
     strimall(szTable);
 
-    stringsetv(pstSavm, stDomain, m_szTable, sgetvalue(szTable, "@", 1));
+    stringset(pstSavm, stDomain, m_szTable, sgetvalue(szTable, "@", 1));
     supper(stDomain.m_szTable);
     if(!strlen(stDomain.m_szTable))
     {
@@ -3888,7 +3888,7 @@ void    vPullTableDomain(char *pszParam)
         return ;
     }
 
-    stringsetv(pstSavm, stDomain, m_szPart, sgetvalue(szTable, "@", 2));
+    stringset(pstSavm, stDomain, m_szPart, sgetvalue(szTable, "@", 2));
     if(!strlen(stDomain.m_szPart))
         strcpy(stDomain.m_szPart, stDomain.m_szOwner);
 
