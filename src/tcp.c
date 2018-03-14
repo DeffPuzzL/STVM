@@ -2119,7 +2119,7 @@ long    lCacheDomain(SATvm *pstSavm, Benum eMode, long lPort)
         {    
             fprintf(stderr, "get domain error, %s", sGetTError(pstSavm->m_lErrno));
             pthread_exit(NULL);
-            return ;
+            return RC_FAIL;
         }
     }
 
@@ -2135,7 +2135,7 @@ long    lCacheDomain(SATvm *pstSavm, Benum eMode, long lPort)
             TFree(pstDom);
             fprintf(stderr, "add domain list error, %s", strerror(errno));
             pthread_exit(NULL);
-            return ;
+            return RC_FAIL;
         }
     }
     TFree(pstDom);
@@ -2558,7 +2558,7 @@ long    lPullNotify(SATvm *pstSavm, TDomain *pstDom, size_t lCount)
         return RC_FAIL;
     }
 
-    fprintf(stdout, "\b\bcompleted .\nCopy table(%s) success, table maxrow:%d, valid:%ld "
+    fprintf(stdout, "\b\bcompleted .\nCopy table(%s) success, table maxrow:%ld, valid:%ld "
         " completed .\n", stDet.m_szTable, stDet.m_lMaxRow, lValid);
     fflush(stdout);
     if(NULL == (pstSavm = (SATvm *)pInitSATvm(pstDom->m_table)))
@@ -3519,18 +3519,28 @@ void*    pProtocaJava(SATvm *pstSavm, void *pstVoid, TFace *pstFace, void *pvBuf
         memcpy(szLen, pvData, 4);
         pvData += 4;
 
-        if(lLen < (len = strlen(szLen)))    return NULL;
+        if(lLen < (len = strlen(szLen)))
+        {
+            pstSavm->m_lErrno = SQL_SYNTX_ERR;
+            return NULL;
+        }
         lLen -= (len + 4);
 
         if(NULL == (q = strstr(pvData, "=")))
+        {
+            pstSavm->m_lErrno = SQL_SYNTX_ERR;
             return NULL;
+        }
 
         n = q - pvData;
         m = MIN(n, MAX_FIELD_LEN);
         memcpy(szField, pvData, m);
         szField[m] = 0x00;
         if(NULL == (pstKey = pFindField(pv, lGetIdxNum(pstFace->m_table), szField)))
+        {
+            pstSavm->m_lErrno = FLD_NOT_EXIST;
             return NULL;
+        }
 
         vSetCodField(pstCond, pstKey->m_lLen, pstKey->m_lFrom);
         memcpy(pstVoid + pstKey->m_lFrom, pvData + n + 1, m);
@@ -3552,24 +3562,39 @@ void*    pProtocaJava(SATvm *pstSavm, void *pstVoid, TFace *pstFace, void *pvBuf
             memcpy(szLen, pvData, 4);
             pvData += 4;
         
-            if(lLen < (len = strlen(szLen)))    return NULL;
+            if(lLen < (len = strlen(szLen))) 
+            {
+                pstSavm->m_lErrno = SQL_SYNTX_ERR;
+                return NULL;
+            }
             lLen -= (len + 4);
         
             if(NULL == (q = strstr(pvData, "=")))
+            {
+                pstSavm->m_lErrno = SQL_SYNTX_ERR;
                 return NULL;
+            }
         
             n = q - pvData;
             m = MIN(n, MAX_FIELD_LEN);
             memcpy(szField, pvData, m);
             szField[m] = 0x00;
             if(NULL == (pstKey = pFindField(pv, lGetIdxNum(pstFace->m_table), szField)))
+            {
+                pstSavm->m_lErrno = FLD_NOT_EXIST;
                 return NULL;
+            }
         
             vSetCodField(pstCond, pstKey->m_lLen, pstKey->m_lFrom);
             memcpy(pstVoid + pstKey->m_lFrom, pvData + n + 1, m);
             pvData += len;
         }
-        if(lLen < 0)    return NULL;
+
+        if(lLen < 0)  
+        {
+            pstSavm->m_lErrno = SQL_SYNTX_ERR;
+            return NULL;
+        }
 
         return memcpy(pvBuffer, pstVoid, pstFace->m_lDLen);
     case OPERATE_SELECT:
@@ -3578,7 +3603,11 @@ void*    pProtocaJava(SATvm *pstSavm, void *pstVoid, TFace *pstFace, void *pvBuf
     case OPERATE_TRCATE:
     case OPERATE_GROUP:
     case OPERATE_EXTREM:
-        if(lLen < 0)    return NULL;
+        if(lLen < 0)
+        {
+            pstSavm->m_lErrno = SQL_SYNTX_ERR;
+            return NULL;
+        }
 
         pstCond = &pstSavm->stUpdt;
         pstCond->uFldcmp = 0;
@@ -3589,18 +3618,28 @@ void*    pProtocaJava(SATvm *pstSavm, void *pstVoid, TFace *pstFace, void *pvBuf
             memcpy(szLen, pvData, 4);
             pvData += 4;
         
-            if(lLen < (len = strlen(szLen)))    return NULL;
-            lLen -= (len + 4);
-        
-            if(NULL == (q = strstr(pvData, "=")))
+            if(lLen < (len = strlen(szLen))) 
+            {
+                pstSavm->m_lErrno = SQL_SYNTX_ERR;
                 return NULL;
+            }
+
+            lLen -= (len + 4);
+            if(NULL == (q = strstr(pvData, "=")))
+            {
+                pstSavm->m_lErrno = SQL_SYNTX_ERR;
+                return NULL;
+            }
         
             n = q - pvData;
             m = MIN(n, MAX_FIELD_LEN);
             memcpy(szField, pvData, m);
             szField[m] = 0x00;
             if(NULL == (pstKey = pFindField(pv, lGetIdxNum(pstFace->m_table), szField)))
+            {
+                pstSavm->m_lErrno = FLD_NOT_EXIST;
                 return NULL;
+            }
         
             m = ((char *)pvData)[n + 1];
             vSetDecorate(pstCond, pstKey->m_lLen, pstKey->m_lFrom, (Uenum)m);    
@@ -3613,6 +3652,7 @@ void*    pProtocaJava(SATvm *pstSavm, void *pstVoid, TFace *pstFace, void *pvBuf
         return pvBuffer;
     }
 
+    pstSavm->m_lErrno = SQL_SYNTX_ERR;
     return NULL;
 }
 

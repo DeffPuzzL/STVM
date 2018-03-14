@@ -713,6 +713,7 @@ extern    long     lImportFile(TABLE t, char *pszFile, char *pszFlag);
 extern    long     lExportFile(TABLE t, char *pszFile, char *pszFlag);
 extern    long     lImportTable(TABLE t, size_t lCount, void *psvOut);
 extern    long     lExportTable(TABLE t, size_t *plOut, void **ppsvOut);
+extern    long     lDumpTable(SATvm *pstSavm, TABLE t);
 
 extern    long     lRenameTable(SATvm *pstSavm, TABLE to, TABLE tn);
 extern    long     lCreateSeque(SATvm *pstSavm, char *pszSQName, uint uIncre);
@@ -729,6 +730,7 @@ extern    long     lTruncate(SATvm *pstSavm, TABLE t);
 extern    long     lSelect(SATvm *pstSavm, void *psvOut);
 extern    long     lUpdate(SATvm *pstSavm, void *psvUpd);
 extern    long     lCount(SATvm *pstSavm, size_t *plCount);
+extern    long     lClick(SATvm *pstSavm, ulong *puHits);
 extern    long     lExtreme(SATvm *pstSavm, void *psvOut);
 extern    long     lGroup(SATvm *pstSavm, size_t *plOut, void **ppsvOut);
 extern    long     lQuery(SATvm *pstSavm, size_t *plOut, void **ppsvOut);

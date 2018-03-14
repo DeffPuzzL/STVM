@@ -318,10 +318,10 @@ void    vGetAction(char *s, long *plAction)
   *************************************************************************************************/
 void    vPrintFunc(char *s)
 {
-    fprintf(stdout, "\nUsage:\t%s -[tpu][hugldtui]\n", s);
+    fprintf(stdout, "\nUsage:\t%s -[tpr][hugldtui]\n", s);
     fprintf(stdout, "\t-t\t\t--table\n");
     fprintf(stdout, "\t-p[hugldta]\t--debug\n");
-    fprintf(stdout, "\t-u(ui)\t\t--reset lock\n");
+    fprintf(stdout, "\t-r\t\t--reset lock\n");
     fprintf(stdout, "\n");
 }
 
@@ -367,7 +367,7 @@ int     main(int argc, char *argv[])
     int     iChoose = 0, iAction = 0;
 
     memset(szCom, 0, sizeof(szCom));
-    while(-1 != (iChoose = getopt(argc, argv, "t:p:u::v?::")))
+    while(-1 != (iChoose = getopt(argc, argv, "t:p:r::v?::")))
     {
         switch(iChoose)
         {
@@ -375,11 +375,7 @@ int     main(int argc, char *argv[])
             iAction |= 1;
             t = atol(optarg);
             break;
-        case    'u':
-            if(!optarg)
-                strcpy(szCom, "u");
-            else
-                strcpy(szCom, optarg);
+        case    'r':
             iAction |= 2;
             break;
         case    'p':

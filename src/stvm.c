@@ -637,7 +637,7 @@ void    vCreateStruck(TblDef *pstTde, bool bf)
     if(bf)
     {
         fprintf(stdout, "\nset TABLE=%d\n", pstTde->m_table);
-        fprintf(stdout, "set TABLESPACE=%d\n\n", pstTde->m_lMaxRow);
+        fprintf(stdout, "set TABLESPACE=%ld\n\n", pstTde->m_lMaxRow);
     }
 
     fprintf(stdout, "typedef struct __%s\n{\n", supper(pstTde->m_szTable));
@@ -645,7 +645,7 @@ void    vCreateStruck(TblDef *pstTde, bool bf)
     {
         pv = &pstTde->m_stKey[i];
         if(FIELD_CHAR == pv->m_lAttr)
-            fprintf(stdout, "    char    %s[%d];\n", pv->m_szField, pv->m_lLen);
+            fprintf(stdout, "    char    %s[%ld];\n", pv->m_szField, pv->m_lLen);
         else if(FIELD_LONG == pv->m_lAttr)
         {
             switch(pv->m_lLen)
@@ -733,10 +733,10 @@ void    vCreateStruck(TblDef *pstTde, bool bf)
         t                         --table
     return：
  *************************************************************************************************/
-void	vTableStruck(TABLE t)
+void    vTableStruck(TABLE t)
 {
-	RunTime *pstRun = NULL;
-	SATvm   *pstSavm = (SATvm *)pGetSATvm();	
+    RunTime *pstRun = NULL;
+    SATvm   *pstSavm = (SATvm *)pGetSATvm();    
 
     if(NULL == (pstSavm = (SATvm *)pInitSATvm(t)))
     {
@@ -751,10 +751,10 @@ void	vTableStruck(TABLE t)
         return ;
     }
 
-	vCreateStruck((TblDef *)pGetTblDef(t), 0);
-	vTblDisconnect(pstSavm, pstSavm->tblName);
+    vCreateStruck((TblDef *)pGetTblDef(t), 0);
+    vTblDisconnect(pstSavm, pstSavm->tblName);
 
-	return ;
+    return ;
 }
 
 /*************************************************************************************************
@@ -806,7 +806,7 @@ long    lDefineTable(char *pszCreate, char *pszTable)
         return RC_FAIL;
     }
 
-	strcpy(pszTable, stTde.m_szTable);
+    strcpy(pszTable, stTde.m_szTable);
     return RC_SUCC;
 }
 
@@ -816,22 +816,22 @@ long    lDefineTable(char *pszCreate, char *pszTable)
     return：
         SQLFld 
  *************************************************************************************************/
-long	lCreateByFile(char *pszFile)
+long    lCreateByFile(char *pszFile)
 {
-	FILE	*fp = NULL;
+    FILE    *fp = NULL;
     struct  stat    stBuf;
     SATvm   *pstSavm = (SATvm *)pGetSATvm();
-	char	*pszCreate = NULL, szTable[MAX_FIELD_LEN];
+    char    *pszCreate = NULL, szTable[MAX_FIELD_LEN];
 
-	sltrim(pszFile);
-	srtrim(pszFile);
+    sltrim(pszFile);
+    srtrim(pszFile);
     fprintf(stdout, "\n------------------------------------------------------SQL Result"
         "-----------------------------------------------------\n");
-	if(0 == strlen(pszFile))
-	{
+    if(0 == strlen(pszFile))
+    {
         fprintf(stderr, "create table syntax error\n");
-		return RC_FAIL;
-	}
+        return RC_FAIL;
+    }
 
     if(0 != access(pszFile, F_OK | R_OK ))
     {
@@ -840,41 +840,41 @@ long	lCreateByFile(char *pszFile)
     }
 
     if(0 != stat(pszFile, &stBuf))
-	{
+    {
         fprintf(stderr, "get %s stat error: %s\n", pszFile, strerror(errno));
         return RC_FAIL;
-	}
+    }
 
     if(!(S_IFREG == (S_IFREG & stBuf.st_mode)))
-	{
+    {
         fprintf(stderr, "file stat error\n");
         return RC_FAIL;
-	}
+    }
 
-	if(NULL == (pszCreate = (char *)calloc(stBuf.st_size, 1)))
-	{
+    if(NULL == (pszCreate = (char *)calloc(stBuf.st_size, 1)))
+    {
         fprintf(stderr, "create memory error, %s\n", strerror(errno));
-		return RC_FAIL;
-	}
+        return RC_FAIL;
+    }
 
-	if(NULL == (fp = fopen(pszFile, "r")))
-	{
-		TFree(pszFile);
-        fprintf(stderr, "open file %s error, %s\n", strerror(errno));
-		return RC_FAIL;
-	}
+    if(NULL == (fp = fopen(pszFile, "r")))
+    {
+        TFree(pszFile);
+        fprintf(stderr, "open file %s error, %s\n", pszFile, strerror(errno));
+        return RC_FAIL;
+    }
 
-	fread(pszCreate, stBuf.st_size, 1, fp);
-	fclose(fp);
+    fread(pszCreate, stBuf.st_size, 1, fp);
+    fclose(fp);
 
-	if(RC_SUCC != lDefineTable(pszCreate, szTable))
-		return RC_FAIL;
+    if(RC_SUCC != lDefineTable(pszCreate, szTable))
+        return RC_FAIL;
 
-	fprintf(stdout, "---(%s) was created ---\n", szTable);
+    fprintf(stdout, "---(%s) was created ---\n", szTable);
 
 
-	TFree(pszCreate);
-	return RC_SUCC;
+    TFree(pszCreate);
+    return RC_SUCC;
 }
 
 /*************************************************************************************************
@@ -3561,10 +3561,12 @@ void    vPrintFunc(char *s)
 {
     fprintf(stdout, "\nUsage:\t%s -wspfco[oytd]\n", s);
     fprintf(stdout, "\t-w[o]\t\t--Startup STVM\n");
-    fprintf(stdout, "\t-s[o]\t\t--Shutdown STVM\n");
+    fprintf(stdout, "\t-s\t\t--Shutdown STVM\n");
     fprintf(stdout, "\t-p(ytd)\t\t--Output STVM Running information\n");
     fprintf(stdout, "\t-f\t\t--Display the amount of table\n");
     fprintf(stdout, "\t-t\t\t--Output the table struck\n");
+    fprintf(stdout, "\t-d\t\t--Dump the table\n");
+    fprintf(stdout, "\t-m\t\t--Mount the table\n");
     fprintf(stdout, "\t-c[file]\t--Compile the startup config file\n");
     fprintf(stdout, "\t-o[file]\t--Decompile the startup config\n");
     fprintf(stdout, "\n");
@@ -3706,19 +3708,19 @@ void    vSQLStatement(int argc, char *argv[])
             continue;
         }
         else if(!strncasecmp(pszUser, "create", 6))
-		{
-			if(lRemote > 0)
-			{
-				fprintf(stderr, "could not create table on Remte mode\n");
-            	TFree(pszUser);
-            	continue;
-			}
+        {
+            if(lRemote > 0)
+            {
+                fprintf(stderr, "could not create table on Remte mode\n");
+                TFree(pszUser);
+                continue;
+            }
 
-			lCreateByFile(pszUser + 6);
-        	fprintf(stdout, "\n\n\n");
-           	TFree(pszUser);
-           	continue;
-		}
+            lCreateByFile(pszUser + 6);
+            fprintf(stdout, "\n\n\n");
+               TFree(pszUser);
+               continue;
+        }
 
         strimcrlf(pszUser);
         lRec = lfieldnum(pszUser, ";");
@@ -3821,7 +3823,7 @@ void    vConnectDomain(char *pszDomain, TBoot *pstBoot)
     }
 
     conditinit(pstSavm, stDomain, SYS_TVM_DOMAIN);
-    stringsetv(pstSavm, stDomain, m_szOwner, pszDomain);
+    stringset(pstSavm, stDomain, m_szOwner, pszDomain);
     decorate(pstSavm, TDomain, m_szOwner, FIRST_ROW);
     if(RC_SUCC != lSelect(pstSavm, (void *)&stDomain))
     {
@@ -3868,7 +3870,7 @@ void    vPullTableDomain(char *pszParam)
     }
 
     conditinit(pstSavm, stDomain, SYS_TVM_DOMAIN);
-    stringsetv(pstSavm, stDomain, m_szOwner, sgetvalue(pszParam, "/", 1));
+    stringset(pstSavm, stDomain, m_szOwner, sgetvalue(pszParam, "/", 1));
     if(!strlen(strimall(stDomain.m_szOwner)))
     {
         fprintf(stderr, "*illegal domain name\n");
@@ -3880,7 +3882,7 @@ void    vPullTableDomain(char *pszParam)
     strncpy(szTable, sgetvalue(szCmd, " ", 1), sizeof(szTable));
     strimall(szTable);
 
-    stringsetv(pstSavm, stDomain, m_szTable, sgetvalue(szTable, "@", 1));
+    stringset(pstSavm, stDomain, m_szTable, sgetvalue(szTable, "@", 1));
     supper(stDomain.m_szTable);
     if(!strlen(stDomain.m_szTable))
     {
@@ -3888,7 +3890,7 @@ void    vPullTableDomain(char *pszParam)
         return ;
     }
 
-    stringsetv(pstSavm, stDomain, m_szPart, sgetvalue(szTable, "@", 2));
+    stringset(pstSavm, stDomain, m_szPart, sgetvalue(szTable, "@", 2));
     if(!strlen(stDomain.m_szPart))
         strcpy(stDomain.m_szPart, stDomain.m_szOwner);
 
@@ -4097,7 +4099,7 @@ int     main(int argc, char *argv[])
 
     vCheckTvmEnv();
     memset(szCom, 0, sizeof(szCom));
-    while(-1 != (iChoose = getopt(argc, argv, "w::s::p::f::t:i:c:v?::")))
+    while(-1 != (iChoose = getopt(argc, argv, "w::s::p::f::d:m:t:i:c:v?::")))
     {
         switch(iChoose)
         {
@@ -4109,8 +4111,16 @@ int     main(int argc, char *argv[])
         case    'p':
             vPrintParam(optarg);
             return RC_SUCC;
-		case    't':
-			vTableStruck(atol(optarg));
+        case    't':
+            vTableStruck(atol(optarg));
+            return RC_SUCC;
+        case    'd':
+            if(RC_SUCC != lDumpTable(pstSavm, atol(optarg)))
+                fprintf(stderr, "dump table error, %s\n", sGetTError(pstSavm->m_lErrno));
+            return RC_SUCC;
+        case    'm':
+            if(RC_SUCC != lMountTable(pstSavm, optarg))
+                fprintf(stderr, "mount table error, %s\n", sGetTError(pstSavm->m_lErrno));
             return RC_SUCC;
         case    'f':
             vTableAmount();

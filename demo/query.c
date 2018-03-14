@@ -55,5 +55,3 @@ int   main(int argc, char *argv[])
 
     return RC_SUCC;
 }
-
-
