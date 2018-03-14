@@ -17,9 +17,10 @@ GROUP=group
 EXTREME=extreme
 TRUNCATE=truncate
 DROP=drop
+CLICK=click
 PRESSURE=press_demo
 
-all: $(CREATE) $(INSERT) $(SELECT) $(QUERY) $(DELETE) $(UPDATE) $(COUNT) $(GROUP) $(EXTREME) $(TRUNCATE) $(DROP) $(PRESSURE) clean
+all: $(CREATE) $(INSERT) $(SELECT) $(QUERY) $(DELETE) $(UPDATE) $(COUNT) $(GROUP) $(EXTREME) $(TRUNCATE) $(DROP) $(PRESSURE) $(CLICK) clean
 $(CREATE): create.o
 	$(CC) -o $@ $< $(LIBDIR)
 $(INSERT): insert.o
@@ -41,6 +42,8 @@ $(EXTREME): extreme.o
 $(TRUNCATE): truncate.o
 	$(CC) -o $@ $< $(LIBDIR)
 $(DROP): drop.o
+	$(CC) -o $@ $< $(LIBDIR)
+$(CLICK): click.o
 	$(CC) -o $@ $< $(LIBDIR)
 $(PRESSURE): press_demo.o
 	$(CC) -o $@ $< $(LIBDIR)

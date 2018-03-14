@@ -5256,6 +5256,7 @@ long    _lSelectTruck(SATvm *pstSavm, void *pvAddr, TABLE t, void *psvOut, size_
     memcpy(psvOut, pvData, lGetRowSize(pstSavm->tblName));
     pthread_rwlock_unlock(prwLock);
     pstTruck->m_lTimes ++;
+
     return RC_SUCC;
 }
 
@@ -5799,7 +5800,6 @@ long    _lQueryHash(SATvm *pstSavm, void *pvAddr, TABLE t, size_t *plOut, void *
             continue;
         }
 
-        pstTruck->m_lTimes ++;
         lPos = (++ (*plOut)) * lGetRowSize(t);
         if(NULL == (*ppsvOut = (char *)realloc(*ppsvOut, lPos)))
         {
@@ -5867,7 +5867,6 @@ long    _lQueryGroup(SATvm *pstSavm, void *pvAddr, TABLE t, size_t *plOut, void 
             continue;
         }    
     
-        pstTruck->m_lTimes ++;
         lPos = (++ (*plOut)) * lGetRowSize(t);
         if(NULL == (*ppsvOut = (char *)realloc(*ppsvOut, lPos)))
         {
@@ -7296,6 +7295,7 @@ long    _lUpdateIndex(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
     }
 
     pstSavm->pstVoid = pvUpdate;
+    pstTruck->m_lTimes ++;
     SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NULL);
     if(!memcmp(szIdx, szOld, MAX_INDEX_LEN))
     {
@@ -9977,16 +9977,23 @@ long    lMountTable(SATvm *pstSavm, char *pszFile)
             goto MOUNT_ERROR;
         }
 
+		lEffect ++;
         if(RC_SUCC != __lInsert(pstSavm, pstRun->m_pvAddr, pstSavm->tblName, uTimes))
+        {
+	        fprintf(stderr, "=>警告, 导入表:%s 第(%ld)条记录错误, %s, 跳过..\n", 
+                sGetTableName(stTde.m_table), lEffect, sGetTError(pstSavm->m_lErrno));
             continue;
+        }
 
-        lEffect ++;
+        pstSavm->m_lEffect ++;
     }
     fclose(fp);
     TFree(pvData);
-    pstSavm->m_lEffect = lEffect;
     pthread_rwlock_unlock(prwLock);
     vTblDisconnect(pstSavm, pstSavm->tblName);
+
+	fprintf(stdout, "导入表:%s 有效记录:%ld, completed successfully !!\n", 
+        sGetTableName(stTde.m_table), lEffect);
     return RC_SUCC;
 
 MOUNT_ERROR:
