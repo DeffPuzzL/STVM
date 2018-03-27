@@ -1724,9 +1724,9 @@ long    lPollRequest(SATvm *pstSovm, SKCon *pstCon, TFace *pstFace, void *pstVoi
         pstFace->m_lDLen = pstRun->m_lRowSize;
         if(NULL == (pvData = pProtocaJava(pstSovm, pstVoid, pstFace, pvData, pstFace->m_lRows)))
         {
-               pstFace->m_lErrno = RESOU_DISABLE;
-               pvData = (void *)pstFace + sizeof(TFace);
-               return lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
+            pstFace->m_lErrno = RESOU_DISABLE;
+            pvData = (void *)pstFace + sizeof(TFace);
+            return lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
         }
 
         pstSovm->pstVoid  = pstVoid;
