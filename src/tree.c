@@ -462,6 +462,60 @@ void*   pGetSATvm()
 }
 
 /*************************************************************************************************
+    description：clone stvm handle by thread
+    parameters:
+    return:
+       void*
+  *************************************************************************************************/
+void*   pCloneSATvm()
+{
+    SATvm    *pstSovm = (SATvm *)malloc(sizeof(SATvm));
+
+    if(!pstSovm)    return NULL;
+
+    memcpy(pstSovm, (SATvm *)pGetSATvm(), sizeof(SATvm));
+    return pstSovm;
+}
+
+/*************************************************************************************************
+    description：free the clone handle by thread
+    parameters:
+    return:
+       void*
+  *************************************************************************************************/
+void    vCloneFree(SATvm *pstSovm)
+{
+    TFree(pstSovm);
+}
+
+/*************************************************************************************************
+    description：initial stvm handle
+    parameters:
+    return:
+  *************************************************************************************************/
+long    lAttchTable(SATvm *pstSovm, TABLE t)
+{
+    RunTime    *pstRun = (RunTime *)pGetRunTime(pGetSATvm(), t);
+
+    if(!pstSovm) return RC_FAIL;
+
+    if(pstRun->m_bAttch && pstRun->m_pvAddr)
+    {
+        memcpy((RunTime *)pGetRunTime(pstSovm, t), pstRun, sizeof(RunTime));
+        return RC_SUCC;
+    }
+
+    if(RC_SUCC != lInitSATvm(pGetSATvm(), t))
+        return RC_FAIL;
+
+    if(NULL == (pstRun = (RunTime *)pInitHitTest(pGetSATvm(), t)))
+       return RC_FAIL;
+
+    memcpy((RunTime *)pGetRunTime(pstSovm, t), pstRun, sizeof(RunTime));
+    return RC_SUCC;
+}
+
+/*************************************************************************************************
     description：initial stvm handle
     parameters:
     return:
@@ -584,7 +638,7 @@ TblDef* pGetTblDef(TABLE t)
   *************************************************************************************************/
 RWLock* pGetRWLock(char* pvAddr)
 {
-    return &((TblDef *)pvAddr)->m_rwlock;
+    return (RWLock *)&((TblDef *)pvAddr)->m_rwlock;
 }
 
 /*************************************************************************************************
@@ -1019,7 +1073,13 @@ void    vHoldConnect(SATvm *pstSavm)
 void    vHoldRelease(SATvm *pstSavm)
 {
     TABLE    t;
-    RunTime    *pstRun = NULL;
+    RunTime  *pstRun = NULL;
+
+    if(pstSavm != (SATvm *)pGetSATvm())
+    {
+        TFree(pstSavm);
+        return;
+    }
 
     pstSavm->m_bHold = FALSE;
     for(t = 0; t < TVM_MAX_TABLE; t ++)
@@ -6351,17 +6411,18 @@ long    lInsert(SATvm *pstSavm)
         return _lInsertByRt(pstSavm);
     }
 
-    if(lGetTblRow(pstSavm->tblName) <= ((TblDef *)pstRun->m_pvAddr)->m_lValid)
-    {
-        pstSavm->m_lErrno = DATA_SPC_FULL;
-        vTblDisconnect(pstSavm, pstSavm->tblName);
-        return RC_FAIL;
-    }
-
     prwLock = (RWLock *)pGetRWLock(pstRun->m_pvAddr);
     if(RC_SUCC != pthread_rwlock_wrlock(prwLock))
     {
         pstSavm->m_lErrno = LOCK_DOWR_ERR;
+        vTblDisconnect(pstSavm, pstSavm->tblName);
+        return RC_FAIL;
+    }
+
+    if(lGetTblRow(pstSavm->tblName) <= ((TblDef *)pstRun->m_pvAddr)->m_lValid)
+    {
+        pthread_rwlock_unlock(prwLock);
+        pstSavm->m_lErrno = DATA_SPC_FULL;
         vTblDisconnect(pstSavm, pstSavm->tblName);
         return RC_FAIL;
     }
@@ -9806,7 +9867,7 @@ long    lClick(SATvm *pstSavm, ulong *puHits)
     if(RES_REMOT_SID == pstRun->m_lLocal)
     {
         pstSavm->m_lErrno = RMT_NOT_SUPPT;
-		return RC_FAIL;
+        return RC_FAIL;
 //        Tremohold(pstSavm, pstRun);
 //        return _lSelectByRt(pstSavm, psvOut);
     }
@@ -9899,7 +9960,7 @@ long    lDumpTable(SATvm *pstSavm, TABLE t)
     fclose(fp);
     vTableClose(pstSavm);
 
-	fprintf(stdout, "导出表:%s 有效记录:%ld, completed successfully !!\n", sGetTableName(t), 
+    fprintf(stdout, "导出表:%s 有效记录:%ld, completed successfully !!\n", sGetTableName(t), 
         pstSavm->m_lEffect);
     return RC_SUCC;
 }
@@ -9961,14 +10022,14 @@ long    lMountTable(SATvm *pstSavm, char *pszFile)
     prwLock = (RWLock *)pGetRWLock(pstRun->m_pvAddr);
     if(RC_SUCC != pthread_rwlock_wrlock(prwLock))
     {
-    	vTblDisconnect(pstSavm, pstSavm->tblName);
+        vTblDisconnect(pstSavm, pstSavm->tblName);
         pstSavm->m_lErrno = LOCK_DOWR_ERR;
         goto MOUNT_ERROR;
     }
 
     while(1 == fread(pvData, stTde.m_lReSize, 1, fp))
     {
-    	fread((void *)&uTimes, sizeof(ulong), 1, fp);
+        fread((void *)&uTimes, sizeof(ulong), 1, fp);
         if(lGetTblRow(stTde.m_table) <= ((TblDef *)pstRun->m_pvAddr)->m_lValid)
         {
             pthread_rwlock_unlock(prwLock);
@@ -9977,10 +10038,10 @@ long    lMountTable(SATvm *pstSavm, char *pszFile)
             goto MOUNT_ERROR;
         }
 
-		lEffect ++;
+        lEffect ++;
         if(RC_SUCC != __lInsert(pstSavm, pstRun->m_pvAddr, pstSavm->tblName, uTimes))
         {
-	        fprintf(stderr, "=>警告, 导入表:%s 第(%ld)条记录错误, %s, 跳过..\n", 
+            fprintf(stderr, "=>警告, 导入表:%s 第(%ld)条记录错误, %s, 跳过..\n", 
                 sGetTableName(stTde.m_table), lEffect, sGetTError(pstSavm->m_lErrno));
             continue;
         }
@@ -9992,7 +10053,7 @@ long    lMountTable(SATvm *pstSavm, char *pszFile)
     pthread_rwlock_unlock(prwLock);
     vTblDisconnect(pstSavm, pstSavm->tblName);
 
-	fprintf(stdout, "导入表:%s 有效记录:%ld, completed successfully !!\n", 
+    fprintf(stdout, "导入表:%s 有效记录:%ld, completed successfully !!\n", 
         sGetTableName(stTde.m_table), lEffect);
     return RC_SUCC;
 

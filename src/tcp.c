@@ -39,29 +39,29 @@ void*   pProtocaJava(SATvm *pstSavm, void *pstVoid, TFace *pstFace, void *pvBuff
 /*************************************************************************************************
     macro
  *************************************************************************************************/
-#define Tlog(...)                vTraceLog(__FILE__, __LINE__, __VA_ARGS__)
+#define Tlog(...)           vTraceLog(__FILE__, __LINE__, __VA_ARGS__)
 
-#define checkrequest(f,c,v,d,l)  if(MAX(f->m_lRows, f->m_lDLen) > l)   \
-                                 { \
-                                    if(MAX(f->m_lRows, f->m_lDLen) > DATA_MAX_LEN) \
-                                    {  \
-                                         f->m_lErrno = RECD_TOO_LONG;  \
-                                         goto LISTEN_ERROR; \
-                                    }  \
-                                    l = MAX(f->m_lRows, f->m_lDLen);  \
-                                    if(NULL == (c = (void *)realloc(c, l + sizeof(TFace))))  \
-                                    { \
-                                          f->m_lErrno = MALLC_MEM_ERR; \
-                                          goto LISTEN_ERROR; \
-                                    } \
-                                    f = (TFace *)c; \
-                                    d = c + sizeof(TFace); \
-                                    if(NULL == (v = (void *)realloc(v, l + sizeof(TFace)))) \
-                                    { \
-                                         f->m_lErrno = MALLC_MEM_ERR;  \
-                                         goto LISTEN_ERROR; \
-                                    } \
-                                 } 
+#define checkrequest(s,c,f) if(MAX(f->m_lRows, f->m_lDLen) > c->m_lBuffer)   \
+                            { \
+                               if(MAX(f->m_lRows, f->m_lDLen) > DATA_MAX_LEN) \
+                               {  \
+                                    s->m_lErrno = RECD_TOO_LONG;  \
+                                    goto LISTEN_ERROR; \
+                               }  \
+                               c->m_lBuffer = MAX(f->m_lRows, f->m_lDLen);  \
+                               if(NULL == (c->pstFace = (void *)realloc(c->pstFace, c->m_lBuffer + sizeof(TFace))))  \
+                               { \
+                                     s->m_lErrno = MALLC_MEM_ERR; \
+                                     goto LISTEN_ERROR; \
+                               } \
+                               f = (TFace *)c->pstFace; \
+                               c->pvData = c->pstFace + sizeof(TFace); \
+                               if(NULL == (c->pstVoid = (void *)realloc(c->pstVoid, c->m_lBuffer + sizeof(TFace)))) \
+                               { \
+                                    s->m_lErrno = MALLC_MEM_ERR;  \
+                                    goto LISTEN_ERROR; \
+                               } \
+                            } 
                                  
 #define checkbuffer(p, r, n)     if((p->lSize * n + r->m_lCurLine) > r->m_lRowSize) \
                                  { \
@@ -1377,6 +1377,25 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
         pstFace->m_lRows  = pstSavm->m_lEffect;
         lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
         return RC_SUCC;
+
+    case  OPERAYS_UPDATE:
+        pstSavm->m_bWork = pstCon->m_bWork;
+        pstSavm->m_pstWork = pstCon->m_pstWork;
+        if(RC_SUCC == lUpdate(pstSavm, pvData))
+            pstCon->m_pstWork = pstSavm->m_pstWork;
+        return RC_SUCC;
+    case  OPERAYS_DELETE:
+        pstSavm->m_bWork = pstCon->m_bWork;
+        pstSavm->m_pstWork = pstCon->m_pstWork;
+        if(RC_SUCC == lDelete(pstSavm))
+            pstCon->m_pstWork = pstSavm->m_pstWork;
+        return RC_SUCC;
+    case  OPERAYS_INSERT:
+        pstSavm->m_bWork = pstCon->m_bWork;
+        pstSavm->m_pstWork = pstCon->m_pstWork;
+        if(RC_SUCC == lInsert(pstSavm))
+            pstCon->m_pstWork = pstSavm->m_pstWork;
+        return RC_SUCC;
     case  OPERATE_INSERT:
         pstSavm->m_bWork = pstCon->m_bWork;
         pstSavm->m_pstWork = pstCon->m_pstWork;
@@ -1623,13 +1642,27 @@ long    lEpollAccept(SATvm *pstSavm, BSock epfd, SKCon *pc)
             return RC_FAIL;
         }
 
+        pstCon->m_lBuffer = READ_MAX_LEN;
+        pstCon->pstFace = (void *)calloc(1, pstCon->m_lBuffer + sizeof(TFace));
+        pstCon->pstVoid = (void *)calloc(1, pstCon->m_lBuffer + sizeof(TFace));
+        if(NULL == pstCon->pstVoid || NULL == pstCon->pstFace)
+        {
+            close(skAccept);
+            fprintf(stderr, "Create memory, err:(%d)(%s)", errno, strerror(errno));
+            return RC_FAIL;
+        }
+
+        pstCon->m_lRead    = 0;
+        pstCon->m_bHead    = FALSE;
         pstCon->m_skSock   = skAccept;
         pstCon->m_lCltPort = ntohs(cAddr.sin_port);
+        pstCon->pvData = pstCon->pstFace + sizeof(TFace);
         strncpy(pstCon->m_szCltIp, inet_ntoa(cAddr.sin_addr), sizeof(pstCon->m_szCltIp));
 
         memset(&event, 0, sizeof(event));
         event.data.ptr = pstCon;
-        event.events   = EPOLLIN | EPOLLET;
+//        event.events   = EPOLLIN | EPOLLET;
+        event.events   = EPOLLIN;
         if(0 != epoll_ctl(epfd, EPOLL_CTL_ADD, skAccept, &event))
         {
             close(skAccept);
@@ -1695,15 +1728,21 @@ long    lPollRequest(SATvm *pstSovm, SKCon *pstCon, TFace *pstFace, void *pstVoi
     {
         lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
         vResetRemote(pstSovm, pstCon->m_szCltIp, pstFace->m_lFind, pstCon->m_skSock);
+        pstCon->m_lRead = 0;
+        pstCon->m_bHead = FALSE;
         return RC_SUCC;
     }
 
-    if(pstFace->m_lRows != lRecvBuffer(pstCon->m_skSock, pvData, pstFace->m_lRows))
-    {
-        Tlog("recv %d byte, err:%s", lRet, strerror(errno));
+    if(0 > (lRet = lRecvBuffer(pstCon->m_skSock, pvData + pstCon->m_lRead, 
+        pstFace->m_lRows - pstCon->m_lRead)))
         return RC_FAIL;
-    }
-
+    
+    pstCon->m_lRead += lRet;
+    if(pstFace->m_lRows != pstCon->m_lRead)    // more data wait to read
+        return RC_SUCC;
+    
+    pstCon->m_lRead = 0;
+    pstCon->m_bHead = FALSE;
     pstRun = (RunTime *)pGetRunTime(pstSovm, pstFace->m_table);
     pstRun->m_bAttch = pstSovm->stRunTime[pstFace->m_table].m_bAttch;
     pstRun->m_pvAddr = pstSovm->stRunTime[pstFace->m_table].m_pvAddr;
@@ -1770,33 +1809,22 @@ long    lPollRequest(SATvm *pstSovm, SKCon *pstCon, TFace *pstFace, void *pstVoi
  *************************************************************************************************/
 void*    vEpollListen(void *pvParam)
 {
+    long        lRet, i, nWait;
     SKCon       *pstCon = NULL;
     TFace       *pstFace = NULL;
     epollevt    events[MAX_EVENTS];
     BSock       epfd = *((long *)pvParam);
-    long        i, nWait, lBuffer = READ_MAX_LEN;
-    char        *pvData, *pvFace = NULL, *pstVoid = NULL;
     SATvm       *pstSavm = (SATvm *)calloc(1, sizeof(SATvm));
 
     pthread_detach(pthread_self());
+
     vHoldConnect(pstSavm);
-    if(!pstSavm || NULL == (pvFace = calloc(1, lBuffer + sizeof(TFace))))
-    {
-        fprintf(stderr, "create process(%s) memory failed, (%s)", TVM_LOCAL_SERV, strerror(errno));
-        return NULL;
-    }
-
-    if(NULL == (pstVoid = (void *)calloc(1, lBuffer + sizeof(TFace))))
-        return NULL;
-
     if(RC_SUCC != lTvmBuffer(pstSavm))
         return NULL;
 
-    pstFace = (TFace *)pvFace;
-    pvData = pvFace + sizeof(TFace);
     while(g_eRun)
     {
-        nWait = epoll_wait(epfd, events, MAX_EVENTS, 1000);
+        nWait = epoll_wait(epfd, events, MAX_EVENTS, 500);
         for(i = 0; i < nWait; i++)
         {   
             pstCon = (SKCon *)events[i].data.ptr;
@@ -1804,7 +1832,45 @@ void*    vEpollListen(void *pvParam)
                 lEpollAccept(pstSavm, epfd, pstCon);
             else if(events[i].events & EPOLLIN)
             {
-                if(sizeof(TFace) != lRecvBuffer(pstCon->m_skSock, pvFace, sizeof(TFace)))
+               if(FALSE == pstCon->m_bHead)
+               {
+                    if(0 > (lRet = lRecvBuffer(pstCon->m_skSock, pstCon->pstFace + pstCon->m_lRead,
+                        sizeof(TFace) - pstCon->m_lRead)))
+                    {
+                        if(pstCon->m_bWork)
+                        {
+                            pstSavm->m_bWork = pstCon->m_bWork;
+                            pstSavm->m_pstWork = pstCon->m_pstWork;
+                            lRollbackWork(pstSavm);
+                            pstCon->m_bWork = false;
+                        }
+                        pstCon->m_pstWork = NULL;
+                        epoll_ctl(epfd, EPOLL_CTL_DEL, pstCon->m_skSock, &events[i]);
+                        TFree(pstCon->pstFace);
+                        TFree(pstCon->pstVoid);
+                        close(pstCon->m_skSock);
+                        continue;
+                    }
+                    
+                    pstCon->m_lRead += lRet;
+                    if(sizeof(TFace) != pstCon->m_lRead)    // more data wait to read
+                        continue;
+                    
+                    pstFace = (TFace *)pstCon->pstFace;
+                    if(TVM_MAX_TABLE <= pstFace->m_table)
+                    {
+                        pstCon->m_lRead = 0;
+                        pstFace->m_lErrno = RESOU_DISABLE;    
+                        goto LISTEN_ERROR;
+                    }
+                    
+                    checkrequest(pstSavm, pstCon, pstFace);
+                    pstCon->m_lRead = 0;
+                    pstCon->m_bHead = TRUE;
+                }
+
+                if(RC_FAIL == lPollRequest(pstSavm, pstCon, pstFace, pstCon->pstVoid, 
+                    pstCon->pvData))
                 {
                     if(pstCon->m_bWork)
                     {
@@ -1815,28 +1881,8 @@ void*    vEpollListen(void *pvParam)
                     }
                     pstCon->m_pstWork = NULL;
                     epoll_ctl(epfd, EPOLL_CTL_DEL, pstCon->m_skSock, &events[i]);
-                    close(pstCon->m_skSock);
-                    continue;
-                }
-
-                if(TVM_MAX_TABLE <= pstFace->m_table)
-                {
-                    pstFace->m_lErrno = RESOU_DISABLE;    
-                    goto LISTEN_ERROR;
-                }
-
-                checkrequest(pstFace, pvFace, pstVoid, pvData, lBuffer);
-                if(RC_FAIL == lPollRequest(pstSavm, pstCon, pstFace, pstVoid, pvData))
-                {
-                    if(pstCon->m_bWork)
-                    {
-                        pstSavm->m_bWork = pstCon->m_bWork;
-                        pstSavm->m_pstWork = pstCon->m_pstWork;
-                        lRollbackWork(pstSavm);
-                        pstCon->m_bWork = false;
-                    }
-                    pstCon->m_pstWork = NULL;
-                    epoll_ctl(epfd, EPOLL_CTL_DEL, pstCon->m_skSock, &events[i]);
+                    TFree(pstCon->pstFace);
+                    TFree(pstCon->pstVoid);
                     close(pstCon->m_skSock);
                 }
             }
@@ -1844,13 +1890,11 @@ void*    vEpollListen(void *pvParam)
         continue;
 
 LISTEN_ERROR:
-    lSendBuffer(pstCon->m_skSock, pvFace, sizeof(TFace));
+    lSendBuffer(pstCon->m_skSock, pstCon->pstFace, sizeof(TFace));
     continue;
     }
 
     close(epfd);
-    TFree(pvFace);
-    TFree(pstVoid);
     pstSavm->pstVoid = NULL;
     vTvmDisconnect(pstSavm);
     return NULL;
@@ -2313,7 +2357,9 @@ long    lBootLocal(SATvm *pstSavm, TBoot *pstBoot, Benum eMode)
 
     memset(&event, 0, sizeof(event));
     event.data.ptr = pstCon;
-    event.events   = EPOLLIN | EPOLLET;
+//    event.events   = EPOLLIN | EPOLLET;
+    event.events   = EPOLLIN;
+
     if(0 != epoll_ctl(epfd, EPOLL_CTL_ADD, pstCon->m_skSock, &event))
     {
         fprintf(stderr, "add socket (%d) error, err:(%d)(%s)", pstCon->m_skSock,
@@ -3680,8 +3726,10 @@ void*    pParsePacket(SATvm *pstSavm, void *pstVoid, TFace *pstFace, void *pvBuf
 
     switch(pstFace->m_enum)
     {
+    case OPERAYS_INSERT:
     case OPERATE_INSERT:
         return memcpy(pstVoid, pvData, pstFace->m_lDLen);
+    case OPERAYS_UPDATE:
     case OPERATE_UPDATE:
         memcpy(&pstCond->uFldcmp, pvData, sizeof(uint));
         for(i = 0, pvData += sizeof(uint); i < pstCond->uFldcmp; i ++)
@@ -3710,6 +3758,7 @@ void*    pParsePacket(SATvm *pstSavm, void *pstVoid, TFace *pstFace, void *pvBuf
     case OPERATE_SELECT:
     case OPERATE_QUERY:
     case OPERATE_DELETE:
+    case OPERAYS_DELETE:
     case OPERATE_TRCATE:
     case OPERATE_GROUP:
     case OPERATE_COUNT:
@@ -3941,6 +3990,159 @@ long    lTvmQuery(SATvm *pstSavm, size_t *plOut, void **ppvOut)
 
     *plOut = pstFace->m_lRows;
     pstSavm->m_lEffect = pstFace->m_lRows;
+    return RC_SUCC;
+}
+
+/*************************************************************************************************
+    description：API - delete by asynch
+    parameters:
+        pstSavm                    --stvm handle
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    lAsyDelete(SATvm *pstSavm)
+{
+    RunTime *pstRun;
+    TFace   *pstFace;
+    uint    lWrite = sizeof(TFace);
+
+    if(!pstSavm)
+    {
+        pstSavm->m_lErrno = CONDIT_IS_NIL;
+        return RC_FAIL;
+    }
+
+    pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
+    if(!pstRun->pstVoid)
+    {
+        pstSavm->m_lErrno = DOM_NOT_INITL;
+        return RC_FAIL;
+    }
+
+    pstFace = (TFace *)pstRun->pstVoid;
+    pstFace->m_lFind  = pstSavm->lFind;
+    pstFace->m_lDLen  = pstSavm->lSize;
+    pstFace->m_lErrno = TVM_DONE_SUCC;
+    pstFace->m_enum   = OPERAYS_DELETE;
+    pstFace->m_table  = pstSavm->tblName;
+
+    checkbuffer(pstSavm, pstRun, 1);
+    vBuildPacket(pstRun->pstVoid, pstSavm->pstVoid, &pstSavm->stCond, &lWrite);
+    vAppendCond(pstRun->pstVoid, &pstSavm->stUpdt, &lWrite);
+    pstFace->m_lRows = lWrite - sizeof(TFace);
+
+    if(lWrite != lSendBuffer(pstSavm->m_skSock, (void *)pstRun->pstVoid, lWrite))
+    {
+        pstSavm->m_lErrno = SOCK_COM_EXCP;
+        return RC_FAIL;
+    }
+        
+    return RC_SUCC;
+}
+
+/*************************************************************************************************
+    description：API - update by asynch
+    parameters:
+        pstSavm                    --stvm handle
+        pvData                     --update data
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    lAsyUpdate(SATvm *pstSavm, void *pvData)
+{
+    RunTime *pstRun;
+    FdCond  *pstCond;
+    TFace   *pstFace;
+    uint    lWrite = sizeof(TFace);
+
+    if(!pstSavm || !pvData)
+    {
+        pstSavm->m_lErrno = CONDIT_IS_NIL;
+        return RC_FAIL;
+    }
+
+    pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
+    if(!pstRun->pstVoid)
+    {
+        pstSavm->m_lErrno = DOM_NOT_INITL;
+        return RC_FAIL;
+    }
+
+    pstFace = (TFace *)pstRun->pstVoid;
+    pstFace->m_lFind  = pstSavm->lFind;
+    pstFace->m_lDLen  = pstSavm->lSize;
+    pstFace->m_lErrno = TVM_DONE_SUCC;
+    pstFace->m_enum   = OPERAYS_UPDATE;
+    pstFace->m_table  = pstSavm->tblName;
+
+    checkbuffer(pstSavm, pstRun, 2);
+    pstCond = &pstSavm->stUpdt;
+    if(0 == pstCond->uFldcmp)
+    {
+        pstSavm->m_lErrno = UPDFD_NOT_SET;
+        return RC_FAIL;
+    }
+
+    vBuildPacket(pstRun->pstVoid, pstSavm->pstVoid, &pstSavm->stCond, &lWrite);
+    vBuildPacket(pstRun->pstVoid, pvData, pstCond, &lWrite);
+    pstFace->m_lRows  = lWrite - sizeof(TFace);
+
+    if(lWrite != lSendBuffer(pstSavm->m_skSock, (void *)pstRun->pstVoid, lWrite))
+    {
+        pstSavm->m_lErrno = SOCK_COM_EXCP;
+        return RC_FAIL;
+    }
+        
+    return RC_SUCC;
+}
+
+/*************************************************************************************************
+    description：API - insert by asynch
+    parameters:
+        pstSavm                    --stvm handle
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    lAsyInsert(SATvm *pstSavm)
+{
+    uint    lWrite;
+    RunTime *pstRun;
+    TFace   *pstFace;
+
+    if(!pstSavm || !pstSavm->pstVoid)
+    {
+        pstSavm->m_lErrno = CONDIT_IS_NIL;
+        return RC_FAIL;
+    }
+
+    pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
+    if(!pstRun->pstVoid)
+    {
+        pstSavm->m_lErrno = DOM_NOT_INITL;
+        return RC_FAIL;
+    }
+
+    pstFace = (TFace *)pstRun->pstVoid;
+    pstFace->m_lFind  = pstSavm->lFind;
+    pstFace->m_lDLen  = pstSavm->lSize;
+    pstFace->m_lErrno = TVM_DONE_SUCC;
+    pstFace->m_enum   = OPERAYS_INSERT;
+    pstFace->m_table  = pstSavm->tblName;
+
+    pstFace->m_lRows  = pstSavm->lSize;
+    lWrite = pstFace->m_lRows + sizeof(TFace);
+
+    checkbuffer(pstSavm, pstRun, 1);
+    memcpy(pstRun->pstVoid + sizeof(TFace), pstSavm->pstVoid, pstSavm->lSize);
+    if(lWrite != lSendBuffer(pstSavm->m_skSock, (void *)pstRun->pstVoid, lWrite))
+    {
+        pstSavm->m_lErrno = SOCK_COM_EXCP;
+        return RC_FAIL;
+    }
+        
     return RC_SUCC;
 }
 

@@ -197,6 +197,12 @@ int   sizecn(TblKey *pstKey, long lfld)
     for(i = 0, k = 0; i < lfld; i ++)
     {
         pv = &pstKey[i];
+        if(FIELD_CHAR == pv->m_lAttr)
+        {
+            k = sizeof(char);
+            continue;
+        }
+
         if(FIELD_CHAR != pv->m_lAttr && pv->m_lLen > k)
             k = pv->m_lLen;
     }
@@ -322,7 +328,7 @@ long    lAnalysTable(char *s, long len, TblDef *pstTde)
 {
     long    i, n, k;
     TblKey  *pv = NULL;
-    char    szTemp[512], szField[1024], szTar[128], *p = NULL;
+    char    szTemp[512], szField[5120], szTar[128], *p = NULL;
 
     memset(szField, 0, sizeof(szField));
     if(len > sizeof(szField) || len < 1)
@@ -2179,9 +2185,6 @@ long    _lExeExtreme(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, void *pv
     if(RC_SUCC != lRet)
     {
         TFree(pvResult);
-        vDestroyFiled(pstRoot);
-        fprintf(stderr, "extreme table (%s) failure, %s\n", pstIndex->m_szTable, 
-            sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;
     }
   
@@ -2236,7 +2239,6 @@ long    _lExeExtreme(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, void *pv
     TFree(pvResult);
     fprintf(stdout, "---(%ld)records selected -ep(%d)--\n", pstSavm->m_lEffect, pstSavm->m_lEType);
 
-    vDestroyFiled(pstRoot);
     return RC_SUCC;
 }
 
@@ -2327,6 +2329,8 @@ long    _lParseSelect(SATvm *pstSavm, char *pszTable, char *pszField, char *pszW
         if(RC_SUCC != _lExeExtreme(pstSavm, &stIndex, pstRoot, pvWhere, bRmt))
             goto ERR_SELECT;
         
+        vDestroyFiled(pstRoot);
+        pstRoot = NULL;
         TFree(pstField);
         TFree(pvWhere);
         return RC_SUCC;
@@ -2348,12 +2352,14 @@ long    _lParseSelect(SATvm *pstSavm, char *pszTable, char *pszField, char *pszW
 
     TFree(pvWhere);
     vDestroyFiled(pstRoot);
+    pstRoot = NULL;
     return RC_SUCC;
 
 ERR_SELECT:
     TFree(pvWhere);
     TFree(pstField);
     vDestroyFiled(pstRoot);
+    pstRoot = NULL;
     return RC_FAIL;
 }
 

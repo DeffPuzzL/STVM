@@ -4,7 +4,7 @@ AR=ar
 LD=ld
 LN=ln
 CC=cc -fPIC
-CO=-c -g -DMAX_INDEX_LEN=64 -DMAX_FILED_NUM=32
+CO=-c -g -DMAX_INDEX_LEN=64 -DMAX_FILED_NUM=64
 LDFLAG=-shared -g
 OUTLIB=../lib
 OUTBIN=../bin

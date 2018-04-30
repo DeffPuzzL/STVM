@@ -65,6 +65,11 @@ typedef long                 CREATE;
 #define OPERATE_DELETE                      2
 #define OPERATE_UPDATE                      4
 #define OPERATE_SELECT                      8
+
+#define OPERAYS_INSERT                      1025
+#define OPERAYS_DELETE                      1026
+#define OPERAYS_UPDATE                      1027
+
 #define OPERATE_TRCATE                      14
 #define OPERATE_COUNT                       15
 #define OPERATE_GROUP                       16
@@ -109,7 +114,7 @@ typedef long                 CREATE;
 #define MAX_FIELD_LEN                       32          // maxinum length of Field name
 
 #ifndef MAX_FILED_NUM 
-#define MAX_FILED_NUM                       32          // maximum number of fields in a table
+#define MAX_FILED_NUM                       64          // maximum number of fields in a table
 #endif
 
 #define MAX_REMOTE_IP                       20
@@ -614,6 +619,8 @@ extern    char*    sGetLog();
 extern    char*    sGetNode();
 extern    void*    pGetBoot();
 extern    void*    pGetSATvm();
+extern    void*    pCloneSATvm();
+extern    void     vCloneFree(SATvm *pstSavm);
 extern    long     lDefaultBoot();
 extern    TBoot*   pBootInitial();
 extern    size_t   lGetTblRow(TABLE t);

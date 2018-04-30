@@ -53,6 +53,12 @@ typedef struct __SOCK_CONNECT
     int     m_lCltPort;
     BSock   m_skSock;
     int     m_isListen;
+	void    *pvData;
+	void	*pstFace;
+	void    *pstVoid;
+	int     m_lBuffer;
+	BOOL    m_bHead;
+	int     m_lRead;
     BOOL    m_bWork;
     ulong   m_uWorker;
     CMList  *m_pstWork;
@@ -128,6 +134,10 @@ extern long       lTvmSetSequence(SATvm *pstSavm, char *pszSQName, ulong uStart)
 extern long       lTvmRebuildIndex(SATvm *pstSavm, TABLE t);
 extern long       lTvmResetLock(SATvm *pstSavm, TABLE t);
 
+// asynchronous interface
+extern long       lAsyInsert(SATvm *pstSavm);
+extern long       lAsyDelete(SATvm *pstSavm);
+extern long       lAsyUpdate(SATvm *pstSavm, void *pvData);
 #ifdef __cplusplus
 }
 #endif
