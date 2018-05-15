@@ -754,15 +754,15 @@ long   lSortRowgrp(Rowgrp **root, FdCond *pstExm, TABLE t)
         pstCond                    --field list
         uNice                      --next index of field
     return:
-        TRUE                       --success
-        FALSE                      --failure
+        true                       --success
+        false                      --failure
  *************************************************************************************************/
 bool    bCompare(void *s, void *p, FdCond *pstCond, uint uNice)
 {
     FdKey   *pstKey;
 
     if(pstCond->uFldcmp <= uNice)
-        return TRUE;
+        return true;
 
     pstKey = &pstCond->stFdKey[uNice];
     if(pstKey->uDecorate & ORDER_ASC)
@@ -774,20 +774,20 @@ bool    bCompare(void *s, void *p, FdCond *pstCond, uint uNice)
             {
             case    4:
                 if(*((float *)(s + pstKey->uFldpos)) > *((float *)(p + pstKey->uFldpos)))
-                    return TRUE;
+                    return true;
                 else if(*((float *)(s + pstKey->uFldpos)) == *((float *)(p + pstKey->uFldpos)))
                     return bCompare(s, p, pstCond, ++ uNice);
                 else
-                    return FALSE;
+                    return false;
             case    8:
                 if(*((double *)(s + pstKey->uFldpos)) > *((double *)(p + pstKey->uFldpos)))
-                    return TRUE;
+                    return true;
                 else if(*((float *)(s + pstKey->uFldpos)) == *((float *)(p + pstKey->uFldpos)))
                     return bCompare(s, p, pstCond, ++ uNice);
                 else
-                    return FALSE;
+                    return false;
             default:
-                return FALSE;
+                return false;
             }
             break;
         case FIELD_LONG:
@@ -795,36 +795,36 @@ bool    bCompare(void *s, void *p, FdCond *pstCond, uint uNice)
             {
             case    2:
                 if(*((sint *)(s + pstKey->uFldpos)) > *((sint *)(p + pstKey->uFldpos)))
-                    return TRUE;
+                    return true;
                 else if(*((sint *)(s + pstKey->uFldpos)) == *((sint *)(p + pstKey->uFldpos)))
                     return bCompare(s, p, pstCond, ++ uNice);
                 else
-                    return FALSE;
+                    return false;
             case    4:
                 if(*((int *)(s + pstKey->uFldpos)) > *((int *)(p + pstKey->uFldpos)))
-                    return TRUE;
+                    return true;
                 else if(*((int *)(s + pstKey->uFldpos)) == *((int *)(p + pstKey->uFldpos)))
                     return bCompare(s, p, pstCond, ++ uNice);
                 else
-                    return FALSE;
+                    return false;
             case    8:
                 if(*((llong *)(s + pstKey->uFldpos)) > *((llong *)(p + pstKey->uFldpos)))
-                    return TRUE;
+                    return true;
                 else if(*((llong *)(s + pstKey->uFldpos)) == *((llong *)(p + pstKey->uFldpos)))
                     return bCompare(s, p, pstCond, ++ uNice);
                 else
-                    return FALSE;
+                    return false;
             default:
-                return FALSE;
+                return false;
             }
             break;
         case FIELD_CHAR:
             if(0 < memcmp(s + pstKey->uFldpos, p + pstKey->uFldpos, pstKey->uFldlen))
-                return TRUE;
+                return true;
             else if(0 == memcmp(s + pstKey->uFldpos, p + pstKey->uFldpos, pstKey->uFldlen))
                 return bCompare(s, p, pstCond, ++ uNice);
             else
-                return FALSE;
+                return false;
             break;
         default:
             break;
@@ -839,20 +839,20 @@ bool    bCompare(void *s, void *p, FdCond *pstCond, uint uNice)
             {
             case    4:
                 if(*((float *)(s + pstKey->uFldpos)) < *((float *)(p + pstKey->uFldpos)))
-                    return TRUE;
+                    return true;
                 else if(*((float *)(s + pstKey->uFldpos)) == *((float *)(p + pstKey->uFldpos)))
                     return bCompare(s, p, pstCond, ++ uNice);
                 else
-                    return FALSE;
+                    return false;
             case    8:
                 if(*((double *)(s + pstKey->uFldpos)) < *((double *)(p + pstKey->uFldpos)))
-                    return TRUE;
+                    return true;
                 else if(*((float *)(s + pstKey->uFldpos)) == *((float *)(p + pstKey->uFldpos)))
                     return bCompare(s, p, pstCond, ++ uNice);
                 else
-                    return FALSE;
+                    return false;
             default:
-                return FALSE;
+                return false;
             }
             break;
         case FIELD_LONG:
@@ -860,36 +860,36 @@ bool    bCompare(void *s, void *p, FdCond *pstCond, uint uNice)
             {
             case    2:
                 if(*((sint *)(s + pstKey->uFldpos)) < *((sint *)(p + pstKey->uFldpos)))
-                    return TRUE;
+                    return true;
                 else if(*((sint *)(s + pstKey->uFldpos)) == *((sint *)(p + pstKey->uFldpos)))
                     return bCompare(s, p, pstCond, ++ uNice);
                 else
-                    return FALSE;
+                    return false;
             case    4:
                 if(*((int *)(s + pstKey->uFldpos)) < *((int *)(p + pstKey->uFldpos)))
-                    return TRUE;
+                    return true;
                 else if(*((int *)(s + pstKey->uFldpos)) == *((int *)(p + pstKey->uFldpos)))
                     return bCompare(s, p, pstCond, ++ uNice);
                 else
-                    return FALSE;
+                    return false;
             case    8:
                 if(*((llong *)(s + pstKey->uFldpos)) < *((llong *)(p + pstKey->uFldpos)))
-                    return TRUE;
+                    return true;
                 else if(*((llong *)(s + pstKey->uFldpos)) == *((llong *)(p + pstKey->uFldpos)))
                     return bCompare(s, p, pstCond, ++ uNice);
                 else
-                    return FALSE;
+                    return false;
             default:
-                return FALSE;
+                return false;
             }
             break;
         case FIELD_CHAR:
             if(0 > memcmp(s + pstKey->uFldpos, p + pstKey->uFldpos, pstKey->uFldlen))
-                return TRUE;
+                return true;
             else if(0 == memcmp(s + pstKey->uFldpos, p + pstKey->uFldpos, pstKey->uFldlen))
                 return bCompare(s, p, pstCond, ++ uNice);
             else
-                return FALSE;
+                return false;
             break;
         default:
             break;

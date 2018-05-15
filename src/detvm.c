@@ -76,7 +76,7 @@ void    vDebugTree(void *pvData, SHTree *pstTree)
 void    vDebugTable(TABLE t, long eType)
 {
     long    i = 0, j = 0;
-    RunTime    *pstRun = NULL;
+    RunTime *pstRun = NULL;
     TblKey  *pstKey = NULL;
     SHTree  *pstTree = NULL;
     SHList  *pstList = NULL;
@@ -99,49 +99,55 @@ void    vDebugTable(TABLE t, long eType)
 
     if(eType & DEBUG_HEAD_INFO)
     {
-        fprintf(stdout, "\n==========================================TABLE HEAND INFO============="
-        "============================\n");
-        fprintf(stdout, "TABLE:%d, NAME:%s\tSHTree(%ld),SHList(%ld),TblDef(%ld)\n"
-            "extern:%ld, Group:%ld, MaxRow:%ld, Valid:%ld, lNodeNil:%ld, lIType:%d, "
-            "Table:%ld\nIdxLen:%ld, TreePos:%ld,  TreeRoot:%ld, GrpLen:%ld, GroupPos:%ld, "
-            "GroupRoot:%ld\nListPos:%ld, ListOfs:%ld, Data:%ld, ReSize:%ld, Truck:%ld\n", 
-            ((TblDef *)pGetTblDef(t))->m_table, ((TblDef *)pGetTblDef(t))->m_szTable,
-            sizeof(SHTree), sizeof(SHList), sizeof(TblDef), ((TblDef *)pGetTblDef(t))->m_lExtern, 
+        fprintf(stdout, "\n---------------------------- TABLE HEAND INFO ----------------------"
+            "----------\n");
+        fprintf(stdout, "TABLE:%9d, extern:%10ld, NAME:%s\t\nSHTree:%8ld, SHList:%10ld, "
+            "TblDef:%11ld\nGroup:%9ld, MaxRow:%10ld, Valid:%12ld\nlNodeNil:%6ld, lIType:%10d, "
+            "Table:%12ld\nIdxLen:%8ld, TreePos:%9ld, TreeRoot:%9d\nGrpLen:%8ld, GroupPos:%8ld, "
+            "GroupRoot:%8ld\nData:%10ld, ReSize:%10ld, Truck:%12ld\nListPos:%7ld, ListOfs:%9ld\n", 
+            ((TblDef *)pGetTblDef(t))->m_table, ((TblDef *)pGetTblDef(t))->m_lExtern, 
+            ((TblDef *)pGetTblDef(t))->m_szTable, sizeof(SHTree), sizeof(SHList), sizeof(TblDef), 
             ((TblDef *)pGetTblDef(t))->m_lGroup, ((TblDef *)pGetTblDef(t))->m_lMaxRow, 
             ((TblDef *)pGetTblDef(t))->m_lValid, ((TblDef *)pGetTblDef(t))->m_lNodeNil,
-            ((TblDef *)pGetTblDef(t))->m_lIType, 
-            ((TblDef *)pGetTblDef(t))->m_lTable, ((TblDef *)pGetTblDef(t))->m_lIdxLen, 
-            ((TblDef *)pGetTblDef(t))->m_lTreePos, ((TblDef *)pGetTblDef(t))->m_lTreeRoot,
-            ((TblDef *)pGetTblDef(t))->m_lGrpLen, ((TblDef *)pGetTblDef(t))->m_lGroupPos, 
-            ((TblDef *)pGetTblDef(t))->m_lGroupRoot, ((TblDef *)pGetTblDef(t))->m_lListPos,
-            ((TblDef *)pGetTblDef(t))->m_lListOfs, ((TblDef *)pGetTblDef(t))->m_lData, 
-            ((TblDef *)pGetTblDef(t))->m_lReSize, ((TblDef *)pGetTblDef(t))->m_lTruck);
+            ((TblDef *)pGetTblDef(t))->m_lIType, ((TblDef *)pGetTblDef(t))->m_lTable, 
+            ((TblDef *)pGetTblDef(t))->m_lIdxLen, ((TblDef *)pGetTblDef(t))->m_lTreePos, 
+            ((TblDef *)pGetTblDef(t))->m_lTreeRoot, ((TblDef *)pGetTblDef(t))->m_lGrpLen, 
+            ((TblDef *)pGetTblDef(t))->m_lGroupPos, ((TblDef *)pGetTblDef(t))->m_lGroupRoot, 
+            ((TblDef *)pGetTblDef(t))->m_lData, ((TblDef *)pGetTblDef(t))->m_lReSize, 
+            ((TblDef *)pGetTblDef(t))->m_lTruck, ((TblDef *)pGetTblDef(t))->m_lListPos, 
+            ((TblDef *)pGetTblDef(t))->m_lListOfs);
+        fprintf(stdout, "--------------------------------------------------------------------"
+            "----------\n");
 
         pstTree = &((TblDef *)pGetTblDef(t))->m_stNil;
-        fprintf(stdout, ">>NODE_NULL POS:[%8ld], Idx:[%s](%ld)(%ld), Color[%ld], lSePos:[%4ld], lParent[%4ld]"
+        fprintf(stdout, ">>NIL:[%8ld], Idx:[%s](%ld)(%ld), Color[%ld], lSePos:[%4ld], lParent[%4ld]"
             ", left[%4ld], right[%4ld]\n" , (void *)pstTree - (void *)pGetTblDef(t), pstTree->m_szIdx, 
             pstTree->m_lIdx, pstTree->m_lData, pstTree->m_eColor, pstTree->m_lSePos, pstTree->m_lParent, 
             pstTree->m_lLeft, pstTree->m_lRight); 
 
-        fprintf(stdout, "==========UNIQ INDEX FIELD=========\n");
+        fprintf(stdout, "\n--------------------------------UNIQ INDEX FIELD--------------"
+            "----------------\n");
         for(i = 0, pstKey = pGetTblIdx(t); i < lGetIdxNum(t); i ++)
         {
             fprintf(stdout, "From:%4ld, len:%3ld, attr:%ld, IsPk:%ld, field:%s\n", pstKey[i].m_lFrom,
                 pstKey[i].m_lLen, pstKey[i].m_lAttr, pstKey[i].m_lIsPk, pstKey[i].m_szField);
         }
 
-        fprintf(stdout, "==========GROUP INDEX FIELD========\n");
+        fprintf(stdout, "\n--------------------------------UNIQ INDEX FIELD--------------"
+            "----------------\n");
         for(i = 0, pstKey = pGetTblGrp(t); i < lGetGrpNum(t); i ++)
         {
             fprintf(stdout, "From:%4ld, len:%3ld, attr:%ld, IsPk:%ld, field:%s\n", pstKey[i].m_lFrom,
                 pstKey[i].m_lLen, pstKey[i].m_lAttr, pstKey[i].m_lIsPk, pstKey[i].m_szField);
         }
 
-        fprintf(stdout, "==================== TABLE FIELD ====================\n");
+        fprintf(stdout, "\n_______________________________  TABLE FIELD ____________________"
+            "_____________\n");
         for(i = 0, pstKey = pGetTblKey(t); i < lGetFldNum(t); i ++)
         {
-            fprintf(stdout, "From:%4ld, len:%3ld, attr:%ld, IsPk:%ld, field:%s\n", pstKey[i].m_lFrom,
-                pstKey[i].m_lLen, pstKey[i].m_lAttr, pstKey[i].m_lIsPk, pstKey[i].m_szField);
+            fprintf(stdout, "pos:%4ld, len:%3ld, atr:%ld, pk:%ld, fld:%-20s, als:%s\n", 
+                pstKey[i].m_lFrom, pstKey[i].m_lLen, pstKey[i].m_lAttr, pstKey[i].m_lIsPk, 
+                pstKey[i].m_szField, pstKey[i].m_szAlias);
         }
     }                
 
@@ -262,8 +268,8 @@ void    vDebugTable(TABLE t, long eType)
     }
 
     vTblDisconnect(pstSavm, pstSavm->tblName);
-    fprintf(stdout, "=========================================================================="
-        "===================================\n");
+    fprintf(stdout, "================================================================="
+            "==============\n");
 }
 
 /*************************************************************************************************
@@ -271,7 +277,7 @@ void    vDebugTable(TABLE t, long eType)
     parameters:
     return:
   *************************************************************************************************/
-void    vGetAction(char *s, long *plAction)
+void    vGetAction(char *s, int *plAction)
 {
     int     i, nLen;
 
@@ -318,41 +324,10 @@ void    vGetAction(char *s, long *plAction)
   *************************************************************************************************/
 void    vPrintFunc(char *s)
 {
-    fprintf(stdout, "\nUsage:\t%s -[tpr][hugldtui]\n", s);
+    fprintf(stdout, "\nUsage:\t%s -[t][hugldtui]\n", s);
     fprintf(stdout, "\t-t\t\t--table\n");
     fprintf(stdout, "\t-p[hugldta]\t--debug\n");
-    fprintf(stdout, "\t-r\t\t--reset lock\n");
     fprintf(stdout, "\n");
-}
-
-/*************************************************************************************************
-    description：debug action
-    parameters:
-    return:
-  *************************************************************************************************/
-void    vDebugAction(TABLE t, int iAction, char *pszApp, char *pszParam)
-{
-    long    lRet, lDebug = 0;
-    SATvm   *pstSavm = (SATvm *)pGetSATvm();
-
-    if(3 == iAction)
-    {
-        if(RC_SUCC != lResetLock((SATvm *)pGetSATvm(), t))
-        {
-            fprintf(stderr, "reset the table lock (%d) failed, err:(%d)(%s)\n", t,
-                pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
-            return ;
-        }
-    }
-    else if(5 == iAction)
-    {
-        vGetAction(pszParam, &lDebug);
-        vDebugTable(t, lDebug);
-    }
-    else
-        vPrintFunc(pszApp);
-
-    return ;
 }
 
 /*************************************************************************************************
@@ -367,7 +342,7 @@ int     main(int argc, char *argv[])
     int     iChoose = 0, iAction = 0;
 
     memset(szCom, 0, sizeof(szCom));
-    while(-1 != (iChoose = getopt(argc, argv, "t:p:r::v?::")))
+    while(-1 != (iChoose = getopt(argc, argv, "t:p::v?::")))
     {
         switch(iChoose)
         {
@@ -375,12 +350,12 @@ int     main(int argc, char *argv[])
             iAction |= 1;
             t = atol(optarg);
             break;
-        case    'r':
-            iAction |= 2;
-            break;
         case    'p':
             iAction |= 4;
-            strcpy(szCom, optarg);
+            if(!optarg)
+                szCom[0] = 'h';
+            else
+                strcpy(szCom, optarg);
             break;
         case    'v':
         case    '?':
@@ -390,7 +365,15 @@ int     main(int argc, char *argv[])
         }
     }
 
-    vDebugAction(t, iAction, basename(argv[0]), szCom);
+    iChoose = 0;
+    if(5 == iAction)
+    {
+        vGetAction(szCom, &iChoose);
+        vDebugTable(t, iChoose);
+        return RC_SUCC;
+    }
+
+    vPrintFunc(basename(argv[0]));
 
     return RC_SUCC;
 }

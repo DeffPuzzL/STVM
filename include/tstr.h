@@ -60,6 +60,7 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <dlfcn.h>
+#include <stdbool.h>
 #include <libgen.h>
 
 typedef short       int     sint;
@@ -73,37 +74,9 @@ typedef long        int     Benum;
 typedef unsigned    int     Uenum;
 typedef int                 BSock;
 
-#ifndef BOOL
-typedef unsigned    int    BOOL;
-#endif
-
-#ifndef TRUE
-#define TRUE                1
-#endif
-
-#ifndef FALSE
-#define FALSE                0
-#endif
-
-#ifndef __cplusplus
-#ifndef bool
-typedef unsigned    char  bool;
-#endif
-
-#ifndef true
-#define true                1
-#endif
-
-#ifndef false
-#define false                0
-#endif
-
-#endif    // __cplusplus
-
-
 #define RC_NOTFOUND                         24
 #define RC_MATCH                            2
-#define    RC_MISMA                            1
+#define RC_MISMA                            1
 #define RC_SUCC                             0
 #define RC_FAIL                             -1
 #define RC_CONTU                            -5
@@ -143,8 +116,6 @@ extern "C" {
 
 #define MAX(a, b)                           ((a) > (b) ? (a) : (b))
 #define MIN(a, b)                           ((a) > (b) ? (b) : (a))
-#define bool(x)                             (x == 0 ? false : true)
-#define BOOL(x)                             (x == 0 ? false : true)
 
 extern CMList*     pGetCMTail(CMList *pstRoot);
 extern CMList*     pSearchNode(CMList *pstRoot, void *psvData, long lSize);

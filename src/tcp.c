@@ -335,7 +335,7 @@ long    lSetBlock(BSock skSock)
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-BSock    skConnectServer(SATvm *pstSavm, char *pszIp, long lPort, BOOL bf, long lTime)
+BSock    skConnectServer(SATvm *pstSavm, char *pszIp, long lPort, bool bf, long lTime)
 {
     fd_set  set, exp;
     struct  timeval tv;
@@ -356,7 +356,7 @@ BSock    skConnectServer(SATvm *pstSavm, char *pszIp, long lPort, BOOL bf, long 
     }
 
     memset(&lin, 0, sizeof(lin));
-    lin.l_onoff = TRUE;
+    lin.l_onoff = true;
     lin.l_linger = 10;
     if (0 > setsockopt(skSock, SOL_SOCKET, SO_LINGER, &lin, sizeof(lin)))
     {
@@ -1653,7 +1653,7 @@ long    lEpollAccept(SATvm *pstSavm, BSock epfd, SKCon *pc)
         }
 
         pstCon->m_lRead    = 0;
-        pstCon->m_bHead    = FALSE;
+        pstCon->m_bHead    = false;
         pstCon->m_skSock   = skAccept;
         pstCon->m_lCltPort = ntohs(cAddr.sin_port);
         pstCon->pvData = pstCon->pstFace + sizeof(TFace);
@@ -1729,7 +1729,7 @@ long    lPollRequest(SATvm *pstSovm, SKCon *pstCon, TFace *pstFace, void *pstVoi
         lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
         vResetRemote(pstSovm, pstCon->m_szCltIp, pstFace->m_lFind, pstCon->m_skSock);
         pstCon->m_lRead = 0;
-        pstCon->m_bHead = FALSE;
+        pstCon->m_bHead = false;
         return RC_SUCC;
     }
 
@@ -1742,7 +1742,7 @@ long    lPollRequest(SATvm *pstSovm, SKCon *pstCon, TFace *pstFace, void *pstVoi
         return RC_SUCC;
     
     pstCon->m_lRead = 0;
-    pstCon->m_bHead = FALSE;
+    pstCon->m_bHead = false;
     pstRun = (RunTime *)pGetRunTime(pstSovm, pstFace->m_table);
     pstRun->m_bAttch = pstSovm->stRunTime[pstFace->m_table].m_bAttch;
     pstRun->m_pvAddr = pstSovm->stRunTime[pstFace->m_table].m_pvAddr;
@@ -1832,7 +1832,7 @@ void*    vEpollListen(void *pvParam)
                 lEpollAccept(pstSavm, epfd, pstCon);
             else if(events[i].events & EPOLLIN)
             {
-               if(FALSE == pstCon->m_bHead)
+               if(false == pstCon->m_bHead)
                {
                     if(0 > (lRet = lRecvBuffer(pstCon->m_skSock, pstCon->pstFace + pstCon->m_lRead,
                         sizeof(TFace) - pstCon->m_lRead)))
@@ -1866,7 +1866,7 @@ void*    vEpollListen(void *pvParam)
                     
                     checkrequest(pstSavm, pstCon, pstFace);
                     pstCon->m_lRead = 0;
-                    pstCon->m_bHead = TRUE;
+                    pstCon->m_bHead = true;
                 }
 
                 if(RC_FAIL == lPollRequest(pstSavm, pstCon, pstFace, pstCon->pstVoid, 

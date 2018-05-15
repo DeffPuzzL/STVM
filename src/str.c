@@ -181,7 +181,7 @@ char*    strimall(char *p)
 char*   strimfield(char *s)
 {
     register int    i, n, m;
-    BOOL    bf = false;
+    bool    bf = false;
 
     if(!s || 0 == (n = strlen(s)))
         return s;
@@ -212,7 +212,7 @@ char*   strimfield(char *s)
 long    lfieldnum(char *p, char *k)
 {
     char    *y = p;
-    BOOL    bf = false;
+    bool    bf = false;
     long    idx, i, m, n;
 
     if(!p || !k) return 0;
@@ -280,7 +280,7 @@ int     bIsgbk(const char *s)
 char*    sfieldvalue(char *p, char *k, int id)
 {
     char    *y = p;
-    BOOL    bf = false;
+    bool    bf = false;
     long    idx, i = 0, m = 0, n = 0;
     static  char    szOut[1024]; 
     

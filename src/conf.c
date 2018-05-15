@@ -443,7 +443,7 @@ long    _lParseFile(SATvm *pstSavm, CMList **ppstRoot, char *pszFile, const char
 {
     FILE    *fp = NULL;
     char    szLine[4098];
-    BOOL    bFlag = FALSE;
+    bool    bFlag = false;
     CMList  *pstList = NULL;
 
     if(NULL == (fp = fopen(pszFile, "rb")))
@@ -467,7 +467,7 @@ long    _lParseFile(SATvm *pstSavm, CMList **ppstRoot, char *pszFile, const char
 
         if(!strcmp(pszTarget, szLine) && !bFlag)
         {
-            bFlag = TRUE;
+            bFlag = true;
             memset(szLine, 0, sizeof(szLine));
             continue;
         }
@@ -1046,7 +1046,7 @@ PREMOTE_ERROR:
         true                       --repeat
         false
  *************************************************************************************************/
-BOOL    bDomIsRepeat(long lCount, TDomain *pstDomain)
+bool    bDomIsRepeat(long lCount, TDomain *pstDomain)
 {
     int        i, j;
 
@@ -1181,7 +1181,7 @@ long    lUnmakeConfig(char *pszFile)
     char    ch;
     TBoot   stBoot;
     FILE    *fp = NULL;
-    BOOL    bf = false;
+    bool    bf = false;
     TIndex  *pstIndex = NULL;
     TDomain *pstDomain = NULL;
     long    i, j, lOut = 0, lCount = 0;

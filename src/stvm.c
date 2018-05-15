@@ -38,6 +38,7 @@ extern char     **environ;
 extern long     lShutdownTvm();
 extern void     vSetNode(char *s);
 extern long     lStartupTvm(TBoot *pstBoot);
+extern long     lMountTable(SATvm *pstSavm, char *pszFile);
 
 /*************************************************************************************************
     description：get stvm version 
@@ -120,6 +121,46 @@ void    vSCRDebug(const char *fmt, ...)
 }
 
 /*************************************************************************************************
+    description：Returns the current time in millisecond
+    parameters：
+    return：
+        lTime                      --millisecond
+  *************************************************************************************************/
+long    lGetTiskTime()
+{
+    long    lTime;
+    struct timeval  t;
+    struct tm   *ptm;
+
+    gettimeofday(&t, NULL);
+    ptm = localtime(&t.tv_sec);
+
+    lTime = ptm->tm_min * 60 * 1000 + ptm->tm_sec * 1000 + t.tv_usec / 1000;
+    return lTime;
+}
+
+/*************************************************************************************************
+    description：Calculate time consumption (milliseconds)
+    parameters：
+    return：
+        szTime                     --Time string
+  *************************************************************************************************/
+char*   sGetCostTime(long lTime)
+{
+    static  char    szTime[30];
+
+    memset(szTime, 0, sizeof(szTime));
+
+    if(lTime < 0)
+        snprintf(szTime, sizeof(szTime), "cost:nan");
+    if(lTime < 1000)
+        snprintf(szTime, sizeof(szTime), "cost:%ldms", lTime);
+    else
+        snprintf(szTime, sizeof(szTime), "cost:%lds%ldms", lTime / 1000, lTime % 1000);
+    return szTime;
+}
+
+/*************************************************************************************************
     description：get pragma pack 
     parameters：
     return：
@@ -197,7 +238,7 @@ int   sizecn(TblKey *pstKey, long lfld)
     for(i = 0, k = 0; i < lfld; i ++)
     {
         pv = &pstKey[i];
-        if(FIELD_CHAR == pv->m_lAttr)
+        if(FIELD_CHAR == pv->m_lAttr && 0 == k)
         {
             k = sizeof(char);
             continue;
@@ -219,7 +260,7 @@ int   sizecn(TblKey *pstKey, long lfld)
         if(FIELD_CHAR != pv->m_lAttr)
         {
             /*  数据对齐原则----内存按结构成员的先后顺序排列，当排到该成员变量时，
- *                 其前面已摆放的空间大小必须是该成员类型大小的整倍数，如果不够则补齐 */
+ *             其前面已摆放的空间大小必须是该成员类型大小的整倍数，如果不够则补齐 */
             /* 没有考虑用户指定 指定对齐值：#pragma pack (value)时指定的对齐value。 */
             if(pack > pv->m_lLen)
                 n = pv->m_lLen;
@@ -315,6 +356,81 @@ long    lAnalysHead(char *s, long len, TblDef *pstTde)
 }
 
 /*************************************************************************************************
+    description：alias table field name
+    parameters：
+        pstTde                     --Table define
+        pszField                   --string
+        pszAlias                   --string
+    return：
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    lTableAliase(TblDef *pstTde, char *pszField, char *pszAlias)
+{
+    long    i = 0;
+    TblKey  *pv = NULL;
+
+    for(i = 0; i < pstTde->m_lIdxNum; i ++)
+    {
+        pv = &pstTde->m_stKey[i];
+        if(strcmp(pv->m_szField, pszField))
+            continue;
+
+        memset(pv->m_szAlias, 0, sizeof(pv->m_szAlias));    
+        strncpy(pv->m_szAlias, pszAlias, sizeof(pv->m_szAlias));    
+        return RC_SUCC;
+    }
+
+    return RC_FAIL;
+}
+
+/*************************************************************************************************
+    description：alias the table field name
+    parameters：
+        pstTde                     --Table define
+        pszField                   --string
+        pszAlias                   --string
+    return：
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    _lParseAlias(SATvm *pstSavm, char *pszTable, char *pszField, char *pszAlias)
+{
+    TIndex  stIndex;
+    RunTime *pstRun = NULL;
+    long    lTime = lGetTiskTime();
+
+    memset(&stIndex, 0, sizeof(TIndex));
+    strncpy(stIndex.m_szPart, sgetvalue(pszTable, "@", 2), sizeof(stIndex.m_szPart));    
+    strncpy(stIndex.m_szTable, sgetvalue(pszTable, "@", 1), sizeof(stIndex.m_szTable));  
+    supper(stIndex.m_szTable);                                                          
+    if(0x00 == stIndex.m_szPart[0])                                                     
+        strcpy(stIndex.m_szPart, sGetNode());                                           
+
+    if(RC_SUCC != lGetTblIndex(pstSavm, stIndex.m_szTable, stIndex.m_szPart, &stIndex))
+        return RC_FAIL;
+
+    if(RC_SUCC != lInitSATvm(pGetSATvm(), stIndex.m_table))
+            return RC_FAIL;
+
+    if(NULL == (pstRun = (RunTime *)pInitHitTest(pstSavm, stIndex.m_table)))
+        return RC_FAIL;
+
+    if(RC_SUCC != lTableAliase((TblDef *)pstRun->m_pvAddr, pszField, pszAlias))
+    {
+        pstSavm->m_lErrno = FIL_NOT_EXIST;
+        vTblDisconnect(pstSavm, stIndex.m_table);
+        return RC_FAIL;
+    }
+
+    vTblDisconnect(pstSavm, stIndex.m_table);
+    lTime -= lGetTiskTime();
+
+    fprintf(stdout, "---(1) comment updated, %s---\n", sGetCostTime(-1 * lTime));
+    return RC_SUCC;
+}
+
+/*************************************************************************************************
     description：analysis of the table
     parameters：
         s                          --string
@@ -352,6 +468,7 @@ long    lAnalysTable(char *s, long len, TblDef *pstTde)
 
         pv = &pstTde->m_stKey[pstTde->m_lIdxNum];
         strncpy(pv->m_szField, sfieldvalue(szTemp, " ", 1), MAX_FIELD_LEN);
+        strcpy(pv->m_szAlias, pv->m_szField);
         if(!strlen(pv->m_szField))
         {
             fprintf(stderr, "field define error\n");
@@ -389,7 +506,12 @@ long    lAnalysTable(char *s, long len, TblDef *pstTde)
             pv->m_lAttr = FIELD_DOUB;
             pv->m_lLen  = sizeof(float);
         }
-        else if(!strncasecmp(szTar, "char", 1))
+        else if(!strcasecmp(szTar, "byte"))
+        {
+            pv->m_lAttr = FIELD_CHAR;
+            pv->m_lLen  = sizeof(char);
+        }
+        else if(!strncasecmp(szTar, "char", 4))
         {
             pv->m_lAttr = FIELD_CHAR;
             if(!strcasecmp(szTar, "char"))
@@ -409,7 +531,7 @@ long    lAnalysTable(char *s, long len, TblDef *pstTde)
         }
         else
         {
-            fprintf(stderr, "Undefined field type\n");
+            fprintf(stderr, "Undefined field type: %s", szTar);
             return RC_FAIL;
         }
 
@@ -521,8 +643,12 @@ long    lAnalysIndex(char *s, long len, TblDef *pstTde)
 {
     long    i, n, k, lRet;
     char    szIndex[1024], szTemp[256], *p = NULL;
+    char    szComm[512], szAlias[64], szTable[256];
 
+    memset(szComm, 0, sizeof(szComm));
     memset(szIndex, 0, sizeof(szIndex));
+    memset(szAlias, 0, sizeof(szAlias));
+    memset(szTable, 0, sizeof(szTable));
     if(len > sizeof(szIndex) || len < 1)
     {
         fprintf(stderr, "table head define error\n");
@@ -578,15 +704,73 @@ long    lAnalysIndex(char *s, long len, TblDef *pstTde)
             k |= NORMAL;
             lRet = lIndexField(p, pstTde, HASHID);
         }
+        else if(p = strcasestr(szTemp, "comment on "))
+        {
+        // comment on table.column_name is 'comments';
+            p = p + 11;
+            strncpy(szComm, sfieldvalue(p, " ", 1), sizeof(szComm));
+            if(strcasestr(szComm, "column"))
+            {
+                p += 7;
+                strncpy(szComm, sfieldvalue(p, " ", 1), sizeof(szComm));
+            }
+
+            p += strlen(szComm) + 1;
+            if(!strcasestr(p, "is "))
+            {
+                fprintf(stderr, "comment syntax define error\n");
+                return RC_FAIL;
+            }
+
+            p += 3;
+            memset(szAlias, 0, sizeof(szAlias));
+            memset(szTable, 0, sizeof(szTable));
+            strncpy(szAlias, p, sizeof(szAlias));
+            DEL_TAIL_CHAR(szAlias, ';');
+            strimabout(szAlias, "'", "'");
+            strimabout(szAlias, "\"", "\"");
+            if(strstr(szComm, "."))
+            {
+                strncpy(szTable, sfieldvalue(szComm, ".", 1), sizeof(szTable));
+                p = szComm + strlen(szTable) + 1;
+                strimabout(p, "'", "'");
+                strimabout(p, "\"", "\"");
+                if(!strcmp(szTable, pstTde->m_szTable)) // current table
+                {
+                    if(RC_SUCC != (lRet = lTableAliase(pstTde, p, szAlias)))
+                    {
+                        fprintf(stderr, "table %s field:%s not exist\n", szTable, p);
+                        return RC_FAIL;
+                    }
+                }
+                else
+                {
+                    if(RC_SUCC != (lRet = _lParseAlias((SATvm *)pGetSATvm(), szTable, p, szAlias)))
+                    {
+                        fprintf(stderr, "comment %s field %s failure, %s\n", szTable, p, 
+                            sGetTError(lGetTErrno()));
+                        return RC_FAIL;
+                    }
+                }
+            }
+            else
+            {
+                if(RC_SUCC != (lRet = lTableAliase(pstTde, szComm, szAlias)))
+                {
+                    fprintf(stderr, "table %s field:%s not exist\n", szTable, szComm);
+                    return RC_FAIL;
+                }
+            }
+        }
         else
         {
-            fprintf(stderr, "index define error\n");
+            fprintf(stderr, "%s, syntax define error\n", szTemp);
             return RC_FAIL;
         }
 
         if(RC_SUCC != lRet)
         {
-            fprintf(stderr, "parse index field error\n");
+            fprintf(stderr, "parse create syntax error\n");
             return RC_FAIL;
         }
     }
@@ -651,13 +835,18 @@ void    vCreateStruck(TblDef *pstTde, bool bf)
     {
         pv = &pstTde->m_stKey[i];
         if(FIELD_CHAR == pv->m_lAttr)
-            fprintf(stdout, "    char    %s[%ld];\n", pv->m_szField, pv->m_lLen);
+        {
+            if(1 == pv->m_lLen)
+                fprintf(stdout, "    char    %s;\n", pv->m_szField);
+            else
+                fprintf(stdout, "    char    %s[%ld];\n", pv->m_szField, pv->m_lLen);
+        }
         else if(FIELD_LONG == pv->m_lAttr)
         {
             switch(pv->m_lLen)
             {
             case 2:
-                fprintf(stdout, "    short    %s;\n", pv->m_szField);
+                fprintf(stdout, "    short   %s;\n", pv->m_szField);
                 break;
             case 4:
                 fprintf(stdout, "    int     %s;\n", pv->m_szField);
@@ -790,6 +979,7 @@ long    lDefineTable(char *pszCreate, char *pszTable)
     strncpy(stTde.m_szTable, sfieldvalue(p + 12, "\n", 1), sizeof(stTde.m_szTable));
     srtrim(stTde.m_szTable);
     sltrim(stTde.m_szTable);
+    supper(stTde.m_szTable);
 
     if(NULL == (q = strcasestr(p, ";")))
     {
@@ -983,46 +1173,6 @@ SQLFld*    pSortSQLField(SQLFld *pstRoot)
     }
 
      return pstRoot;
-}
-
-/*************************************************************************************************
-    description：Returns the current time in millisecond
-    parameters：
-    return：
-        lTime                      --millisecond
-  *************************************************************************************************/
-long    lGetTiskTime()
-{
-    long    lTime;
-    struct timeval  t;
-    struct tm   *ptm;
-
-    gettimeofday(&t, NULL);
-    ptm = localtime(&t.tv_sec);
-
-    lTime = ptm->tm_min * 60 * 1000 + ptm->tm_sec * 1000 + t.tv_usec / 1000;
-    return lTime;
-}
-
-/*************************************************************************************************
-    description：Calculate time consumption (milliseconds)
-    parameters：
-    return：
-        szTime                     --Time string
-  *************************************************************************************************/
-char*   sGetCostTime(long lTime)
-{
-    static  char    szTime[30];
-
-    memset(szTime, 0, sizeof(szTime));
-
-    if(lTime < 0)
-        return szTime;
-    if(lTime < 1000)
-        snprintf(szTime, sizeof(szTime), "cost:%ldms", lTime);
-    else
-        snprintf(szTime, sizeof(szTime), "cost:%lds%ldms", lTime / 1000, lTime % 1000);
-    return szTime;
 }
 
 /*************************************************************************************************
@@ -1580,7 +1730,15 @@ long    _lUpdateField(SATvm *pstSavm, char *pszField, long lCount, TField *pstFi
             memcpy(pvUpdate + pfld->m_lFrom, v, pfld->m_lLen);
             break;
         case FIELD_CHAR:
-            strncpy(pvUpdate + pfld->m_lFrom, szValue, pfld->m_lLen);
+            switch(pfld->m_lLen)
+            {
+            case    1:
+                memcpy(pvUpdate + pfld->m_lFrom, szValue, pfld->m_lLen);
+                break;
+            default:
+                strncpy(pvUpdate + pfld->m_lFrom, szValue, pfld->m_lLen);
+                break;
+            }
             break;
         default:
             return RC_FAIL;
@@ -1597,9 +1755,9 @@ long    _lUpdateField(SATvm *pstSavm, char *pszField, long lCount, TField *pstFi
         RC_SUCC                            --success
         RC_FAIL                            --failure
   *************************************************************************************************/
-long    _lExeUpdate(SATvm *pstSavm, TIndex *pstIndex, void *pvNew, char *pvData, BOOL bRmt)
+long    _lExeUpdate(SATvm *pstSavm, TIndex *pstIndex, void *pvNew, char *pvData, bool bRmt)
 {
-    long    lRet;
+    long    lRet, lTime = lGetTiskTime();
 
     pstSavm->pstVoid = (void *)pvData;
     pstSavm->tblName = pstIndex->m_table;
@@ -1614,8 +1772,10 @@ long    _lExeUpdate(SATvm *pstSavm, TIndex *pstIndex, void *pvNew, char *pvData,
             sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;
     }
+    lTime -= lGetTiskTime();
 
-    fprintf(stdout, "---(%ld) records updated -ep(%d)--\n", pstSavm->m_lEffect, pstSavm->m_lEType);
+    fprintf(stdout, "---(%ld) records updated, ep(%d), %s---\n", pstSavm->m_lEffect, pstSavm->m_lEType, 
+        sGetCostTime(-1 * lTime));
     return RC_SUCC;
 }
 
@@ -1626,9 +1786,9 @@ long    _lExeUpdate(SATvm *pstSavm, TIndex *pstIndex, void *pvNew, char *pvData,
         RC_SUCC                            --success
         RC_FAIL                            --failure
   *************************************************************************************************/
-long    _lExeDelete(SATvm *pstSavm, TIndex *pstIndex, char *pvData, BOOL bRmt)
+long    _lExeDelete(SATvm *pstSavm, TIndex *pstIndex, char *pvData, bool bRmt)
 {
-    long    lRet;
+    long    lRet, lTime = lGetTiskTime();
 
     pstSavm->pstVoid = (void *)pvData;
     pstSavm->tblName = pstIndex->m_table;
@@ -1639,8 +1799,10 @@ long    _lExeDelete(SATvm *pstSavm, TIndex *pstIndex, char *pvData, BOOL bRmt)
         lRet = lDelete(pstSavm);
     if(RC_SUCC != lRet)
         return RC_FAIL;
+    lTime -= lGetTiskTime();
 
-    fprintf(stdout, "---(%ld) records deleted -ep(%d)--\n", pstSavm->m_lEffect, pstSavm->m_lEType);
+    fprintf(stdout, "---(%ld) records deleted, ep(%d), %s---\n", pstSavm->m_lEffect, pstSavm->m_lEType,
+        sGetCostTime(-1 * lTime));
     return RC_SUCC;
 }
 
@@ -1651,9 +1813,9 @@ long    _lExeDelete(SATvm *pstSavm, TIndex *pstIndex, char *pvData, BOOL bRmt)
         RC_SUCC                            --success
         RC_FAIL                            --failure
   *************************************************************************************************/
-long    _lExeInsert(SATvm *pstSavm, TIndex *pstIndex, void *pvInsert, BOOL bRmt)
+long    _lExeInsert(SATvm *pstSavm, TIndex *pstIndex, void *pvInsert, bool bRmt)
 {
-    long    lRet;
+    long    lRet, lTime = lGetTiskTime();
     
     if(bRmt)
         pstSavm->tblName = pstIndex->m_table;
@@ -1675,8 +1837,9 @@ long    _lExeInsert(SATvm *pstSavm, TIndex *pstIndex, void *pvInsert, BOOL bRmt)
             sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;
     }
+    lTime -= lGetTiskTime();
 
-    fprintf(stdout, "---(%ld) records inserted ---\n", pstSavm->m_lEffect);
+    fprintf(stdout, "---(%ld) records inserted, %s---\n", pstSavm->m_lEffect, sGetCostTime(-1 * lTime));
     return RC_SUCC;
 }
 
@@ -1758,7 +1921,15 @@ long    _lConditField(SATvm *pstSavm, char *pszWhere, long lCount, TField *pstFi
             memcpy(pvWhere + pfld->m_lFrom, v, pfld->m_lLen);
             break;
         case FIELD_CHAR:
-            strncpy(pvWhere + pfld->m_lFrom, szValue, pfld->m_lLen);
+            switch(pfld->m_lLen)
+            {
+            case    1:
+                memcpy(pvWhere + pfld->m_lFrom, szValue, pfld->m_lLen);
+                break;
+            default:
+                strncpy(pvWhere + pfld->m_lFrom, szValue, pfld->m_lLen);
+                break;
+            }
             break;
          default:
             return RC_FAIL;
@@ -1775,9 +1946,10 @@ long    _lConditField(SATvm *pstSavm, char *pszWhere, long lCount, TField *pstFi
         RC_SUCC                            --success
         RC_FAIL                            --failure
   *************************************************************************************************/
-long    _lCountSelect(SATvm *pstSavm, TIndex *pstIndex, char *pvData, BOOL bRmt)
+long    _lCountSelect(SATvm *pstSavm, TIndex *pstIndex, char *pvData, bool bRmt)
 {
-    size_t    lRet, lSum = 0;
+    size_t  lRet, lSum = 0;
+    long    lTime = lGetTiskTime();
 
     pstSavm->pstVoid = (void *)pvData;
     pstSavm->tblName = pstIndex->m_table;
@@ -1792,11 +1964,13 @@ long    _lCountSelect(SATvm *pstSavm, TIndex *pstIndex, char *pvData, BOOL bRmt)
             sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;
     }
+    lTime -= lGetTiskTime();
 
-    fprintf(stdout, "---(%ld) records selected -ep(%d)--\n", pstSavm->m_lEffect, pstSavm->m_lEType);
     fprintf(stdout, "COUNT(*)\n");
     fprintf(stdout, "%zu\n", lSum);
     fflush(stdout);
+    fprintf(stdout, "---(%ld) records selected, ep(%d), %s---\n", pstSavm->m_lEffect, 
+        pstSavm->m_lEType, sGetCostTime(-1 * lTime));
 
     return RC_SUCC;
 }
@@ -1808,12 +1982,13 @@ long    _lCountSelect(SATvm *pstSavm, TIndex *pstIndex, char *pvData, BOOL bRmt)
         RC_SUCC                            --success
         RC_FAIL                            --failure
   *************************************************************************************************/
-long    _lExeGroup(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, char *pvData, BOOL bRmt)
+long    _lExeGroup(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, char *pvData, bool bRmt)
 {
     TblKey  *pstKey = NULL;
     SQLFld  *pstNode = NULL;
     Rowgrp  *pstList = NULL;
     char    *pvResult = NULL;
+    long    lTime = lGetTiskTime();
     size_t  i, lOffset, lRows, lRet;
 
     pstSavm->pstVoid = (void *)pvData;
@@ -1891,8 +2066,10 @@ long    _lExeGroup(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, char *pvDa
         fflush(stdout);
     }
     TFree(pvResult);
+    lTime -= lGetTiskTime();
 
-    fprintf(stdout, "---(%ld) records selected, ep(%d)---\n", pstSavm->m_lEffect, pstSavm->m_lEType);
+    fprintf(stdout, "---(%ld) records selected, ep(%d), %s---\n", pstSavm->m_lEffect, 
+        pstSavm->m_lEType, sGetCostTime(-1 * lTime));
     return RC_SUCC;
 }
 
@@ -1904,12 +2081,13 @@ long    _lExeGroup(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, char *pvDa
         RC_FAIL                            --failure
   *************************************************************************************************/
 long    _lExeSelect(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, char *pvData, char *pszFile,
-            char *pszDem, BOOL bRmt)
+            char *pszDem, bool bRmt)
 {
     FILE    *fp = NULL;
     TblKey  *pstKey = NULL;
     SQLFld  *pstNode = NULL;
     Rowgrp  *pstList = NULL;
+    long    lTime = lGetTiskTime();
     size_t  i, lOffset, lRows, lRet;
     char    szDelmit[64], *pvResult = NULL;
 
@@ -2004,14 +2182,18 @@ long    _lExeSelect(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, char *pvD
         fflush(fp);
     }
     TFree(pvResult);
+    lTime -= lGetTiskTime();
 
     if(pszFile)
     {
-        fprintf(stdout, "---(%ld) records unload ---\n", pstSavm->m_lEffect);
+        fprintf(stdout, "---(%ld) records unload, %s---\n", pstSavm->m_lEffect, sGetCostTime(-1 * lTime));
         fclose(fp);
     }
     else
-        fprintf(stdout, "---(%ld) records selected, ep(%d)---\n", pstSavm->m_lEffect, pstSavm->m_lEType);
+    {
+        fprintf(stdout, "---(%ld) records selected, ep(%d), %s---\n", pstSavm->m_lEffect, 
+            pstSavm->m_lEType, sGetCostTime(-1 * lTime));
+    }
 
     return RC_SUCC;
 }
@@ -2023,7 +2205,7 @@ long    _lExeSelect(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, char *pvD
         RC_SUCC                            --success
         RC_FAIL                            --failure
   *************************************************************************************************/
-long    lParseSequece(SATvm *pstSavm, char *pszSQName, char *pszFiled, BOOL bRmt)
+long    lParseSequece(SATvm *pstSavm, char *pszSQName, char *pszFiled, bool bRmt)
 {
     long    lRet;
     ulong   ulSeque;
@@ -2165,12 +2347,12 @@ long    lParseAdorn(SATvm *pstSavm, char *pszAdorn, long lCount, TField *pstFiel
         RC_SUCC                            --success
         RC_FAIL                            --failure
  *************************************************************************************************/
-long    _lExeExtreme(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, void *pvData, BOOL bRmt)
+long    _lExeExtreme(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, void *pvData, bool bRmt)
 {
-    long    lRet;
     TblKey  *pstKey = NULL;
     SQLFld  *pstNode = NULL;
     void    *pvResult = NULL;
+    long    lRet, lTime = lGetTiskTime();
 
     if(NULL == (pvResult = malloc(pstIndex->m_lRowSize)))
         return RC_FAIL;
@@ -2233,11 +2415,13 @@ long    _lExeExtreme(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, void *pv
             break;
         }
     }
+    lTime -= lGetTiskTime();
 
     fprintf(stdout, "\n");
     fflush(stdout);
     TFree(pvResult);
-    fprintf(stdout, "---(%ld)records selected -ep(%d)--\n", pstSavm->m_lEffect, pstSavm->m_lEType);
+    fprintf(stdout, "---(%ld) records selected, ep(%d), %s--\n", pstSavm->m_lEffect, pstSavm->m_lEType,
+        sGetCostTime(-1 * lTime));
 
     return RC_SUCC;
 }
@@ -2250,7 +2434,7 @@ long    _lExeExtreme(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, void *pv
         RC_FAIL                            --failure
   *************************************************************************************************/
 long    _lParseSelect(SATvm *pstSavm, char *pszTable, char *pszField, char *pszWhere, char *pszFile, 
-            char *pszDem, char *pszAdorn, BOOL bRmt)
+            char *pszDem, char *pszAdorn, bool bRmt)
 {
     TIndex  stIndex;
     SQLFld  *pstRoot = NULL;
@@ -2370,7 +2554,7 @@ ERR_SELECT:
         RC_SUCC                            --success
         RC_FAIL                            --failure
  **************************************************************************************************/
-long    _lSelectSyntax(SATvm *pstSavm, char *pszSQL, char *pszFile, char *pszDem, BOOL bRmt)
+long    _lSelectSyntax(SATvm *pstSavm, char *pszSQL, char *pszFile, char *pszDem, bool bRmt)
 {
     char    szTable[512], *p = NULL;
     char    szWhere[512], szField[512], szAdorn[1024];
@@ -2452,7 +2636,7 @@ long    _lSelectSyntax(SATvm *pstSavm, char *pszSQL, char *pszFile, char *pszDem
         RC_SUCC                            --success
         RC_FAIL                            --failure
   *************************************************************************************************/
-long    _lParseUpdate(SATvm *pstSavm, char *pszTable, char *pszField, char *pszWhere, BOOL bRmt)
+long    _lParseUpdate(SATvm *pstSavm, char *pszTable, char *pszField, char *pszWhere, bool bRmt)
 {
     TIndex  stIndex;
     size_t  lOut = 0, lRet;
@@ -2535,7 +2719,7 @@ ERR_UPDATE:
         RC_SUCC                            --success
         RC_FAIL                            --failure
  **************************************************************************************************/
-long    _lUpdateSyntax(SATvm *pstSavm, char *pszSQL, BOOL bRmt)
+long    _lUpdateSyntax(SATvm *pstSavm, char *pszSQL, bool bRmt)
 {
     char    szTable[MAX_FIELD_LEN];
     char    szWhere[1024], szField[1024];
@@ -2596,7 +2780,7 @@ long    _lUpdateSyntax(SATvm *pstSavm, char *pszSQL, BOOL bRmt)
         RC_SUCC                            --success
         RC_FAIL                            --failure
   *************************************************************************************************/
-long    _lParseDelete(SATvm *pstSavm, char *pszTable,  char *pszWhere, BOOL bRmt)
+long    _lParseDelete(SATvm *pstSavm, char *pszTable,  char *pszWhere, bool bRmt)
 {
     TIndex  stIndex;
     size_t  lOut = 0, lRet;
@@ -2664,7 +2848,7 @@ ERR_DELETE:
         RC_SUCC                            --success
         RC_FAIL                            --failure
  **************************************************************************************************/
-long    _lDeleteSyntax(SATvm *pstSavm, char *pszSQL, BOOL bRmt)
+long    _lDeleteSyntax(SATvm *pstSavm, char *pszSQL, bool bRmt)
 {
     char    szTable[MAX_FIELD_LEN], szWhere[1024];
 
@@ -2704,6 +2888,57 @@ long    _lDeleteSyntax(SATvm *pstSavm, char *pszSQL, BOOL bRmt)
     vSCRDebug("DEBUG:delete where:[%s]", szWhere);
 
     return _lParseDelete(pstSavm, szTable, szWhere, bRmt);
+}
+
+/**************************************************************************************************
+    description：Parse SQL-delete syntax
+    parameters：
+    return：
+        RC_SUCC                            --success
+        RC_FAIL                            --failure
+ **************************************************************************************************/
+long    _lCommentSyntax(SATvm *pstSavm, char *pszSQL, bool bRmt)
+{
+    char    szTable[MAX_FIELD_LEN], szAlias[128], szCom[512], *pszField = NULL;
+
+    memset(szCom, 0, sizeof(szCom));
+    memset(szTable, 0, sizeof(szTable));
+    memset(szAlias, 0, sizeof(szAlias));
+    if(!sGetTruckValue(pszSQL, "on ", " is ", true, szCom, sizeof(szCom)))
+    {
+        pstSavm->m_lErrno = SQL_SYNTX_ERR;
+        return RC_FAIL;
+    }
+    strimall(szCom);
+
+    if(!sGetTruckValue(pszSQL, " is ", NULL, true, szAlias, sizeof(szAlias)))
+    {
+        pstSavm->m_lErrno = SQL_SYNTX_ERR;
+        return RC_FAIL;
+    }
+    strimall(szAlias);
+    DEL_TAIL_CHAR(szAlias, ';');
+    strimabout(szAlias, "'", "'");
+    strimabout(szAlias, "\"", "\"");
+
+    if(!strstr(szCom, "."))
+    {
+        pstSavm->m_lErrno = CMM_TABLE_MIS;
+        return RC_FAIL;
+    }
+
+    strncpy(szTable, sfieldvalue(szCom, ".", 1), sizeof(szTable));
+    pszField = szCom + strlen(szTable) + 1;
+    strimabout(pszField, "'", "'");
+    strimabout(pszField, "\"", "\"");
+    if(RC_SUCC != _lParseAlias(pstSavm, szTable, pszField, szAlias))
+    {
+        fprintf(stderr, "comment %s field %s failure, %s\n", szTable,
+            pszField, sGetTError(pstSavm->m_lErrno));
+        return RC_FAIL;    
+    }
+
+    return RC_SUCC;
 }
 
 /*************************************************************************************************
@@ -2805,7 +3040,7 @@ long    _lInsertField(SATvm *pstSavm, char *pszValues, SQLFld *pstRoot, void *pv
         RC_SUCC                            --success
         RC_FAIL                            --failure
   *************************************************************************************************/
-long    _lParseInsert(SATvm *pstSavm, char *pszTable, char *pszField, char *pszValues, BOOL bRmt)
+long    _lParseInsert(SATvm *pstSavm, char *pszTable, char *pszField, char *pszValues, bool bRmt)
 {
     TIndex  stIndex;
     size_t  lOut = 0, lRet;
@@ -2879,7 +3114,7 @@ ERR_INSERT:
         RC_SUCC                            --success
         RC_FAIL                            --failure
  **************************************************************************************************/
-long    _lInsertSyntax(SATvm *pstSavm, char *pszSQL, BOOL bRmt)
+long    _lInsertSyntax(SATvm *pstSavm, char *pszSQL, bool bRmt)
 {
     char    szTable[MAX_FIELD_LEN];
     char    szValues[1024], szField[1024];
@@ -2957,11 +3192,11 @@ long    _lInsertSyntax(SATvm *pstSavm, char *pszSQL, BOOL bRmt)
         RC_SUCC                            --success
         RC_FAIL                            --failure
  **************************************************************************************************/
-long    _lTruncateSyntax(SATvm *pstSavm, char *pszSQL, BOOL bRmt)
+long    _lTruncateSyntax(SATvm *pstSavm, char *pszSQL, bool bRmt)
 {
-    long    lRet;
     TIndex  stIndex;
     char    szTable[MAX_FIELD_LEN];
+    long    lRet, lTime = lGetTiskTime();
 
     memset(szTable, 0, sizeof(szTable));
     memset(&stIndex, 0, sizeof(TIndex));
@@ -3002,7 +3237,8 @@ long    _lTruncateSyntax(SATvm *pstSavm, char *pszSQL, BOOL bRmt)
     if(RC_SUCC != lRet)
         return RC_FAIL;
 
-    fprintf(stdout, "---(%ld) records deleted ---\n", pstSavm->m_lEffect);
+    lTime -= lGetTiskTime();
+    fprintf(stdout, "---(%ld) records deleted, %s---\n", pstSavm->m_lEffect, sGetCostTime(-1 * lTime));
     return RC_SUCC;
 }
 
@@ -3013,7 +3249,7 @@ long    _lTruncateSyntax(SATvm *pstSavm, char *pszSQL, BOOL bRmt)
         RC_SUCC                            --success
         RC_FAIL                            --failure
  **************************************************************************************************/
-long    _lDropSyntax(SATvm *pstSavm, char *pszSQL, BOOL bRmt)
+long    _lDropSyntax(SATvm *pstSavm, char *pszSQL, bool bRmt)
 {
     long    lRet;
     TIndex  stIndex;
@@ -3073,6 +3309,7 @@ long    _lDropSyntax(SATvm *pstSavm, char *pszSQL, BOOL bRmt)
 long    _lLoadSyntax(SATvm *pstSavm, char *pszSQL)
 {
     TIndex  stIndex;
+    long    lTime = lGetTiskTime();
     char    szFile[256], szParam[256], szDelmit[64];
 
 //    load from a.txt DELIMITER ',' insert into tablename@bcs 
@@ -3130,7 +3367,9 @@ long    _lLoadSyntax(SATvm *pstSavm, char *pszSQL)
     if(RC_SUCC != lImportFile(stIndex.m_table, szFile, szDelmit))
         return RC_FAIL;
 
-    fprintf(stdout, "---(%ld) records inserted ---\n", pstSavm->m_lEffect);
+    lTime -= lGetTiskTime();
+    fprintf(stdout, "---(%ld) records inserted, %s---\n", pstSavm->m_lEffect, 
+        sGetCostTime(-1 * lTime));
 
     return RC_SUCC;
 }
@@ -3142,7 +3381,7 @@ long    _lLoadSyntax(SATvm *pstSavm, char *pszSQL)
         RC_SUCC                            --success
         RC_FAIL                            --failure
  **************************************************************************************************/
-long    _lUnloadSyntax(SATvm *pstSavm, char *pszSQL, BOOL bRmt)
+long    _lUnloadSyntax(SATvm *pstSavm, char *pszSQL, bool bRmt)
 {
     char    szFile[256], szParam[256], szDelmit[64], *p = NULL;
 
@@ -3206,34 +3445,37 @@ long    lExecuteSQL(SATvm *pstSavm, char *pszSQL)
     }
 
     pstSavm->lFind = 0;
+    pstSavm->m_lErrno = 0;
     pstSavm->stCond.uFldcmp = 0;
     pstSavm->stUpdt.uFldcmp = 0;
-    if(!strncasecmp(pszSQL, "begin ", 6) && strcmp(sfieldvalue(pszSQL, ";", 2), "work"))
+    if(!strcasecmp(pszSQL, "begin work"))
     {
         vBeginWork(pstSavm);    
         fprintf(stdout, "---begin work, %s---\n", sGetTError(pstSavm->m_lErrno));
         return RC_SUCC;
     }
 
-    else if(!strncasecmp(pszSQL, "end ", 4) && strcmp(sfieldvalue(pszSQL, ";", 2), "work"))
+    else if(!strcasecmp(pszSQL, "end work"))
     {
         vEndWork(pstSavm);    
         fprintf(stdout, "---end work, %s---\n", sGetTError(pstSavm->m_lErrno));
         return RC_SUCC;
     }
-    else if(!strncasecmp(pszSQL, "commit ", 7) && strcmp(sfieldvalue(pszSQL, ";", 2), "work"))
+    else if(!strcasecmp(pszSQL, "commit work"))
     {
         lCommitWork(pstSavm);    
         fprintf(stdout, "---commit work, %s---\n", sGetTError(pstSavm->m_lErrno));
         return RC_SUCC;
     }
-    else if(!strncasecmp(pszSQL, "rollback ", 9) && strcmp(sfieldvalue(pszSQL, ";", 2), "work"))
+    else if(!strcasecmp(pszSQL, "rollback work"))
     {
         lRollbackWork(pstSavm);    
         fprintf(stdout, "---(%ld) records rollback, %s---\n", pstSavm->m_lEffect, 
             sGetTError(pstSavm->m_lErrno));
         return RC_SUCC;
     }
+    else if(!strncasecmp(pszSQL, "comment ", 8))
+        return _lCommentSyntax(pstSavm, pszSQL + 8, false);
     else if(!strncasecmp(pszSQL, "select ", 7))
         return _lSelectSyntax(pstSavm, pszSQL, NULL, NULL, false);
     else if(!strncasecmp(pszSQL, "update ", 7))
@@ -3276,26 +3518,27 @@ long    lExecuteTvm(SATvm *pstSavm, char *pszSQL)
 
     pstSavm->m_lTimes = 0;
     pstSavm->m_lErrno = 0;
+    pstSavm->m_lErrno = 0;
     sfieldreplace(pszSQL, '\t', ' ');
-    if(!strncasecmp(pszSQL, "begin ", 6) && strcmp(sfieldvalue(pszSQL, ";", 2), "work"))
+    if(!strcasecmp(pszSQL, "begin work"))
     {
         lTvmBeginWork(pstSavm);    
         fprintf(stdout, "---begin work, %s---\n", sGetTError(pstSavm->m_lErrno));
         return RC_SUCC;
     }
-    else if(!strncasecmp(pszSQL, "end ", 4) && strcmp(sfieldvalue(pszSQL, ";", 2), "work"))
+    else if(!strcasecmp(pszSQL, "end work"))
     {
         lTvmEndWork(pstSavm);    
         fprintf(stdout, "---end work, %s---\n", sGetTError(pstSavm->m_lErrno));
         return RC_SUCC;
     }
-    else if(!strncasecmp(pszSQL, "commit ", 7) && strcmp(sfieldvalue(pszSQL, ";", 2), "work"))
+    else if(!strcasecmp(pszSQL, "commit work"))
     {
         lTvmCommitWork(pstSavm);    
         fprintf(stdout, "---commit work, %s---\n", sGetTError(pstSavm->m_lErrno));
         return RC_SUCC;
     }
-    else if(!strncasecmp(pszSQL, "rollback ", 9) && strcmp(sfieldvalue(pszSQL, ";", 2), "work"))
+    else if(!strcasecmp(pszSQL, "rollback work"))
     {
         lTvmRollbackWork(pstSavm);    
         fprintf(stdout, "---(%ld) records rollback, %s---\n", pstSavm->m_lEffect, 
@@ -3315,6 +3558,8 @@ long    lExecuteTvm(SATvm *pstSavm, char *pszSQL)
     else if(!strncasecmp(pszSQL, "drop ", 5))
         return _lDropSyntax(pstSavm, pszSQL, true);
 /*
+    else if(!strncasecmp(pszSQL, "comment ", 8))
+        return _lCommentSyntax(pstSavm, pszSQL + 8, false);
     else if(!strncasecmp(pszSQL, "load ", 5))
         return _lLoadSyntax(pstSavm, pszSQL, true);
 */
@@ -3385,7 +3630,7 @@ long    lStartSystem(TBoot *pstBoot, char *pszMode)
  **************************************************************************************************/
 long    lStopSystem(TBoot *pstBoot, char *pszApp)
 {
-    BOOL    bRet;
+    bool    bRet;
     long    i, lPid = 0;
     FILE    *fp = NULL;
     static  char    szCmd[128], szPid[20];
@@ -3414,7 +3659,7 @@ long    lStopSystem(TBoot *pstBoot, char *pszApp)
 
         for(i = 0; i < 200; i ++, usleep(50000))
         {
-            if(FALSE == (bRet = bExistProcess(lPid)))
+            if(false == (bRet = bExistProcess(lPid)))
                 break;
         }
 
@@ -3570,11 +3815,13 @@ void    vPrintFunc(char *s)
     fprintf(stdout, "\t-s\t\t--Shutdown STVM\n");
     fprintf(stdout, "\t-p(ytd)\t\t--Output STVM Running information\n");
     fprintf(stdout, "\t-f\t\t--Display the amount of table\n");
-    fprintf(stdout, "\t-t\t\t--Output the table struck\n");
-    fprintf(stdout, "\t-d\t\t--Dump the table\n");
-    fprintf(stdout, "\t-m\t\t--Mount the table\n");
-    fprintf(stdout, "\t-c[file]\t--Compile the startup config file\n");
-    fprintf(stdout, "\t-o[file]\t--Decompile the startup config\n");
+    fprintf(stdout, "\t-i table\t--Rebuild index on the table\n");
+    fprintf(stdout, "\t-l table\t--Reset lock of the table\n");
+    fprintf(stdout, "\t-t table\t--Output the table struck\n");
+    fprintf(stdout, "\t-d file\t\t--Dump the table files\n");
+    fprintf(stdout, "\t-m file\t\t--Mount the table files\n");
+    fprintf(stdout, "\t-c conf\t\t--Compile the startup config file\n");
+    fprintf(stdout, "\t-o conf\t\t--Decompile the startup config\n");
     fprintf(stdout, "\n");
     fprintf(stdout, "\n");
     fprintf(stdout, "\033[4m\033[45;33mDESCRIPTION\033[0m\n");
@@ -3592,6 +3839,9 @@ void   vAddHistory(char *s)
 {
     FILE   *fp = NULL;
     char   szPath[512];
+
+    if(!s || !strlen(s))
+        return ;
 
     memset(szPath, 0, sizeof(szPath));
     snprintf(szPath, sizeof(szPath), "%s/%s", getenv("TVMDBD"), STVM_SQL_LINE);
@@ -3654,9 +3904,10 @@ void   vSetHistory()
  **************************************************************************************************/
 void    vSQLStatement(int argc, char *argv[])
 {
-    char    *pszUser, *p, szSQL[2048];
+    FILE    *fp = NULL;
     long    i = 0, lRec, lRemote = 0, lRet;
     SATvm   *pstSavm = (SATvm *)pGetSATvm();
+    char    *pszUser, *p, szSQL[2048], szText[2048];
 
     system("stty erase ^?");
     system("stty erase ^H");
@@ -3665,6 +3916,15 @@ void    vSQLStatement(int argc, char *argv[])
     {
         if(!strcasecmp(argv[i], "--debug=on"))
             elog = 1;
+        else if(!strncasecmp(argv[i], "--msql=", 7))
+        {
+            if(NULL == (fp = fopen(argv[i] + 7, "rb")))
+            {
+                fprintf(stderr, "open file %s error, %s\n", argv[i] + 7, 
+                    strerror(errno));
+                exit(-1);
+            }
+        }
         else if(!strncasecmp(argv[i], "--connect=", 10))
         {
             if(NULL == (pszUser = strstr(argv[i], "--connect=")))
@@ -3699,14 +3959,27 @@ void    vSQLStatement(int argc, char *argv[])
     vSetHistory();
     while(1)
     {
-        if(NULL == (pszUser = readline("M-SQL>")))
-            continue;
+        if(fp)
+        {
+            memset(szText, 0, sizeof(szText));
+            if(!fgets(szText, sizeof(szText), fp))
+            {
+                fclose(fp);
+                break;    
+            }
+
+            strimcrlf(szText);
+            pszUser = strdup(szText);
+        }
+        else
+        {
+            if(NULL == (pszUser = readline("M-SQL>")))
+                continue;
+        }
 
         if(!strcmp(pszUser, "q") || !strcmp(pszUser, "Q") || !strcmp(pszUser, "exit"))
             break;
 
-        add_history(pszUser);
-        vAddHistory(pszUser);
         if(!strcasecmp(pszUser, "clear"))
         {
             system("clear");
@@ -3722,10 +3995,14 @@ void    vSQLStatement(int argc, char *argv[])
                 continue;
             }
 
+            memset(szSQL, 0, sizeof(szSQL));
+            strcpy(szSQL, pszUser);
             lCreateByFile(pszUser + 6);
             fprintf(stdout, "\n\n\n");
-               TFree(pszUser);
-               continue;
+            add_history(szSQL);
+            vAddHistory(szSQL);
+            TFree(pszUser);
+            continue;
         }
 
         strimcrlf(pszUser);
@@ -3734,10 +4011,12 @@ void    vSQLStatement(int argc, char *argv[])
         {
             memset(szSQL, 0, sizeof(szSQL));
             strncpy(szSQL, sfieldvalue(pszUser, ";", i + 1), sizeof(szSQL));
+            strimcrlf(szSQL);
             sltrim(szSQL);
             srtrim(szSQL);
             if(!strlen(szSQL))    continue;
 
+            add_history(szSQL);
             sfieldreplace(szSQL, '\t', ' ');
             fprintf(stdout, "\n------------------------------------------------------SQL Result"
                 "-----------------------------------------------------\n");
@@ -3751,6 +4030,8 @@ void    vSQLStatement(int argc, char *argv[])
                     sGetTError(pstSavm->m_lErrno));
                 continue;
             }
+
+            vAddHistory(szSQL);
         }
         TFree(pszUser);
         fprintf(stdout, "\n\n\n");
@@ -4054,25 +4335,17 @@ void    vCheckTvmEnv()
 {
     int   nRet;
 
-    if(!getenv("TVMCFG"))
-    {
-        fprintf(stderr, "Environment variable \"TVMCFG\" is not set\n");
-        exit(-1);
-    }
-
     if(!getenv("TVMDBD"))
     {
         fprintf(stderr, "Environment variable \"TVMDBD\" is not set\n");
         exit(-1);
     }
 
-/*
-    if(0 != access(getenv("TVMDBD"), F_OK | X_OK ))
+    if(!getenv("TVMCFG"))
     {
-        fprintf(stderr, "\"TVMDBD\" directory isnot set yet!\n");
+        fprintf(stderr, "Environment variable \"TVMCFG\" is not set\n");
         exit(-1);
     }
-*/
 
     mkdir(getenv("TVMDBD"), S_IRWXU | S_IRWXG | S_IROTH | S_IEXEC );
 }
@@ -4105,7 +4378,7 @@ int     main(int argc, char *argv[])
 
     vCheckTvmEnv();
     memset(szCom, 0, sizeof(szCom));
-    while(-1 != (iChoose = getopt(argc, argv, "w::s::p::f::d:m:t:i:c:v?::")))
+    while(-1 != (iChoose = getopt(argc, argv, "w::s::p::f::d:m:t:i:l:c:v?::")))
     {
         switch(iChoose)
         {
@@ -4135,6 +4408,16 @@ int     main(int argc, char *argv[])
             table = atol(optarg);
             if(RC_SUCC != lRebuildIndex(pstSavm, table))
                 fprintf(stderr, "rebuild index failure, %s\n", sGetTError(pstSavm->m_lErrno));
+            return RC_SUCC;
+        case    'l':
+            fprintf(stdout, "Do you want to initialize the lock of table (%d) Y/N?:", atol(optarg));
+            lRet = getchar();
+            if(0x59 != lRet && 0x79 != lRet)
+                return RC_SUCC;
+            if(RC_SUCC != lResetLock(pstSavm, atol(optarg)))
+                fprintf(stderr, "重置表(%d)失败, %s\n", atol(optarg), sGetTError(pstSavm->m_lErrno));
+            else
+                fprintf(stderr, "重置表(%d)完成, completed successfully !!\n", atol(optarg));
             return RC_SUCC;
         case    'v':
             fprintf(stdout, "%s\n", sGetTVMVers());

@@ -144,6 +144,7 @@ static char    tvmerr[100][MAX_INDEX_LEN] = {
     "update field not set",
     "extreme set decorate error",
     "group set decorate error",
+    "the table of field is missing",
     "",
 };
 
@@ -1061,7 +1062,7 @@ char* sGetTablePart(TABLE t, char *pszNode)
  *************************************************************************************************/
 void    vHoldConnect(SATvm *pstSavm)
 {
-    pstSavm->m_bHold = TRUE;
+    pstSavm->m_bHold = true;
 }
 
 /*************************************************************************************************
@@ -1081,7 +1082,7 @@ void    vHoldRelease(SATvm *pstSavm)
         return;
     }
 
-    pstSavm->m_bHold = FALSE;
+    pstSavm->m_bHold = false;
     for(t = 0; t < TVM_MAX_TABLE; t ++)
     {
         pstRun = (RunTime *)pGetRunTime(pstSavm, t);
@@ -1099,7 +1100,7 @@ void    vHoldRelease(SATvm *pstSavm)
         if(pstRun->m_pvAddr)
             shmdt(pstRun->m_pvAddr);
         pstRun->m_pvAddr = NULL;
-        pstRun->m_bAttch = FALSE;
+        pstRun->m_bAttch = false;
     }
 
     return ;
@@ -1133,7 +1134,7 @@ void    _vTblRelease(SATvm *pstSavm, TABLE t, bool bHold)
     if(pstRun->m_pvAddr)
         shmdt(pstRun->m_pvAddr);
     pstRun->m_pvAddr = NULL;
-    pstRun->m_bAttch = FALSE;
+    pstRun->m_bAttch = false;
 }
 
 /*************************************************************************************************
@@ -1477,7 +1478,7 @@ long    lInitSvCache(SATvm *pstSavm)
         pstRun->m_lLocal = pstIndex[i].m_lLocal;
     }
     
-    pstSavm->m_bCache = TRUE;
+    pstSavm->m_bCache = true;
     TFree(pstIndex);
 
     return RC_SUCC;
@@ -1647,7 +1648,7 @@ void*    pInitHitTest(SATvm *pstSavm, TABLE t)
 
     pstSavm->m_lErrno = 0;
     pstSavm->m_lEffect= 0;
-    pstRun->m_bAttch  = TRUE;
+    pstRun->m_bAttch  = true;
     pstSavm->lSize    = lGetRowSize(t);
     memcpy((void *)pGetTblDef(t), pstRun->m_pvAddr, sizeof(TblDef));
 
@@ -1720,7 +1721,7 @@ void*    pInitMemTable(SATvm *pstSavm, TABLE t)
         return NULL;
     }
 
-    pstRun->m_bAttch = TRUE;
+    pstRun->m_bAttch = true;
 
     memcpy((void *)pGetTblDef(t), pstRun->m_pvAddr, sizeof(TblDef));
 
@@ -1808,7 +1809,7 @@ void*    pCreateBlock(SATvm *pstSavm, TABLE t, size_t lSize, bool bCreate)
     }
 
 //  memset(pstRun->m_pvAddr, 0, lSize);
-    pstRun->m_bAttch = TRUE;
+    pstRun->m_bAttch = true;
 
     return pstRun;
 }
@@ -3777,7 +3778,7 @@ long    __lDeleteHash(SATvm *pstSavm, void *pvAddr, SHTree *pstTree, TABLE t)
             return RC_FAIL;
         }
 
-        lReleaseTruck(pvAddr, t, pstTruck, TRUE);
+        lReleaseTruck(pvAddr, t, pstTruck, true);
         ((TblDef *)pvAddr)->m_lValid --;
 
         if(SELF_POS_UNUSE == lNext)          break;
@@ -3943,7 +3944,7 @@ long    __lDeleteIndex(SATvm *pstSavm, void *pvAddr, TABLE t, void *psvIdx)
         return RC_FAIL;
     }
 
-    lReleaseTruck(pvAddr, t, pstTruck, TRUE);
+    lReleaseTruck(pvAddr, t, pstTruck, true);
     pthread_rwlock_unlock(prwLock);
 
     pstSavm->m_lEffect = 1;
@@ -4080,7 +4081,7 @@ long    __lDeleteGroup(SATvm *pstSavm, void *pvAddr, TABLE t, void *psvIdx)
             return RC_FAIL;
         }
 
-        lReleaseTruck(pvAddr, t, pstTruck, TRUE);
+        lReleaseTruck(pvAddr, t, pstTruck, true);
         ((TblDef *)pvAddr)->m_lValid --;
 
         if(SELF_POS_UNUSE == lNext)       break;
@@ -4131,7 +4132,7 @@ long    _lDeleteGroup(SATvm *pstSavm, void *pvAddr, TABLE t)
  *************************************************************************************************/
 long    _lDeleteTruck(SATvm *pstSavm, void *pvAddr, TABLE t)
 {
-    bool    bIsIdx = FALSE;
+    bool    bIsIdx = false;
     SHTree  *pstRoot = NULL;
     SHTruck *pstTruck = NULL;
     char    szIdx[MAX_INDEX_LEN];
@@ -4139,7 +4140,7 @@ long    _lDeleteTruck(SATvm *pstSavm, void *pvAddr, TABLE t)
     size_t  lData = 0, lOffset = lGetTblData(t), lIdx;
     long    lRow, lValid = ((TblDef *)pvAddr)->m_lValid;
 
-    if(HAVE_INDEX(t))    bIsIdx = TRUE;
+    if(HAVE_INDEX(t))    bIsIdx = true;
 
     if(RC_SUCC != pthread_rwlock_wrlock(prwLock))
     {
@@ -5037,6 +5038,8 @@ long    _lRebuildIndex(SATvm *pstSavm, void *pvAddr)
 
         lRow ++;
     }
+
+    ((TblDef *)pvAddr)->m_lValid = lRow;
 
     return RC_SUCC;
 }
@@ -8346,13 +8349,16 @@ long    lStartupTvm(TBoot *pstBoot)
     SATvm     *pstSavm = (SATvm *)pGetSATvm();
 
     memset(&stIndex, 0, sizeof(TIndex));
-    if(RC_SUCC != _lCreateTable(pstSavm, SYS_TVM_INDEX, pstBoot->m_lMaxTable, TRUE, 
+    if(RC_SUCC != _lCreateTable(pstSavm, SYS_TVM_INDEX, pstBoot->m_lMaxTable, true, 
         TYPE_SYSTEM, NULL))
         return RC_FAIL;
 
     pstRun = (RunTime *)pGetRunTime(pstSavm, SYS_TVM_INDEX);
     if(RC_SUCC != lCreateSems(pstSavm, pstRun, pstBoot->m_lMaxTable, SEM_INIT))
+    {
+        shmctl(pstRun->m_shmID, IPC_RMID, NULL);
         return RC_FAIL;
+    }
 
     semID = pstRun->m_semID;
     stIndex.m_lValid   = 0;
@@ -8381,7 +8387,7 @@ long    lStartupTvm(TBoot *pstBoot)
         return RC_FAIL;
 
     memset(&stIndex, 0, sizeof(TIndex));
-    if(RC_SUCC != _lCreateTable(pstSavm, SYS_TVM_FIELD, pstBoot->m_lMaxField, FALSE, 
+    if(RC_SUCC != _lCreateTable(pstSavm, SYS_TVM_FIELD, pstBoot->m_lMaxField, false, 
         TYPE_INCORE, NULL))
         return RC_FAIL;
 
@@ -8409,7 +8415,7 @@ long    lStartupTvm(TBoot *pstBoot)
         return RC_FAIL;
 
     memset(&stIndex, 0, sizeof(TIndex));
-    if(RC_SUCC != _lCreateTable(pstSavm, SYS_TVM_DOMAIN, pstBoot->m_lMaxDomain, FALSE, 
+    if(RC_SUCC != _lCreateTable(pstSavm, SYS_TVM_DOMAIN, pstBoot->m_lMaxDomain, false, 
         TYPE_INCORE, NULL))
         return RC_FAIL;
 
@@ -8437,7 +8443,7 @@ long    lStartupTvm(TBoot *pstBoot)
         return RC_FAIL;
 
     memset(&stIndex, 0, sizeof(TIndex));
-    if(RC_SUCC != _lCreateTable(pstSavm, SYS_TVM_SEQUE, pstBoot->m_lMaxSeque, FALSE, 
+    if(RC_SUCC != _lCreateTable(pstSavm, SYS_TVM_SEQUE, pstBoot->m_lMaxSeque, false, 
         TYPE_INCORE, NULL))
         return RC_FAIL;
 
@@ -8480,7 +8486,7 @@ long    lStartupTvm(TBoot *pstBoot)
  *************************************************************************************************/
 long    lCreateTable(SATvm *pstSavm, TABLE t, size_t lRow, TCREATE pfCreateFunc)
 {
-    return _lCreateTable(pstSavm, t, lRow, FALSE, TYPE_CLIENT, pfCreateFunc);
+    return _lCreateTable(pstSavm, t, lRow, false, TYPE_CLIENT, pfCreateFunc);
 }
 
 /*************************************************************************************************
@@ -8499,7 +8505,7 @@ long    lCustomTable(SATvm *pstSavm, TABLE t, size_t lRow, TblDef *pstDef)
 
     memcpy((void *)pGetTblDef(t), (void *)pstDef, sizeof(TblDef));    
 
-    return _lCustomTable(pstSavm, t, lRow, FALSE, TYPE_CLIENT);
+    return _lCustomTable(pstSavm, t, lRow, false, TYPE_CLIENT);
 }
 
 /*************************************************************************************************
@@ -8623,8 +8629,7 @@ long    _lExportContext(FILE *fp, char *s, long lIdx, TblKey *pstIdx, char *f)
             }
             break;
         case FIELD_CHAR:
-//            fwrite(s + pstIdx[i].m_lFrom, 1, pstIdx[i].m_lLen, fp);
-            fprintf(fp, "%s", s + pstIdx[i].m_lFrom);
+            fprintf(fp, "%.*s", pstIdx[i].m_lLen, s + pstIdx[i].m_lFrom);
             break;
         default:
             fprintf(stderr, "Export field attribute exception\n");
@@ -9194,10 +9199,10 @@ bool    bIsTvmBoot()
     pstRun->m_lLocal = RES_LOCAL_SID;
 
     if(NULL == (pstRun = (RunTime *)pInitMemTable(pstSavm, pstSavm->tblName)))
-        return FALSE;
+        return false;
 
     vTblDisconnect(pstSavm, pstSavm->tblName);
-    return TRUE;
+    return true;
 }
 
 /*************************************************************************************************
@@ -9281,6 +9286,7 @@ long    _lExtremGroup(SATvm *pstSavm, void *pvAddr, TABLE t, FdKey *pFdKey, void
         return RC_FAIL;
     }
 
+    pstSavm->m_lEffect = 1;
     memcpy(psvOut + pFdKey->uFldpos, pvData + pFdKey->uFldpos, pFdKey->uFldlen);
     return RC_SUCC;
 }   
@@ -9342,6 +9348,7 @@ long    _lExtremeHash(SATvm *pstSavm, void *pvAddr, TABLE t, FdKey *pFdKey, void
         return RC_FAIL;
     }
 
+    pstSavm->m_lEffect = 1;
     memcpy(psvOut + pFdKey->uFldpos, pvData + pFdKey->uFldpos, pFdKey->uFldlen);
     return RC_SUCC;
 }
@@ -9400,6 +9407,7 @@ long    _lExtremeTruck(SATvm *pstSavm, void *pvAddr, TABLE t, FdKey *pFdKey, voi
         return RC_FAIL;
     }
 
+    pstSavm->m_lEffect = 1;
     memcpy(psvOut + pFdKey->uFldpos, pvData + pFdKey->uFldpos, pFdKey->uFldlen);
     return RC_SUCC;
 }
@@ -9453,6 +9461,7 @@ long    _lExtremIndex(SATvm *pstSavm, void *pvAddr, TABLE t, FdKey *pFdKey, void
 
     pstTruck = (PSHTruck)pGetNode(pvAddr, pstTree->m_lData);
     memcpy(psvOut + pFdKey->uFldpos, pstTruck->m_pvData + pFdKey->uFldpos, pFdKey->uFldlen);
+    pstSavm->m_lEffect = 1;
     return RC_SUCC;
 }
 

@@ -288,6 +288,7 @@ typedef long                 CREATE;
 #define UPDFD_NOT_SET                       93          // update field not set
 #define EXTRE_SET_ERR                       94          // extreme set decorate error
 #define GROUP_SET_ERR                       95          // group set decorate error
+#define CMM_TABLE_MIS                       96          // the table of field is missing
 
 /*************************************************************************************************
      创建表宏函数
@@ -346,20 +347,22 @@ typedef long                 CREATE;
                                    p->pstVoid = NULL;  \
                                 }while(0);
 
-#define stringsetv(p,s,f,...)   vSetCodField(&p->stCond, sizeof((s).f), (void *)(s).f - (void *)&(s)); \
+#define stringsetv(p,s,f,...)   vSetCodField(&p->stCond, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
                                 snprintf((s).f, sizeof((s).f), __VA_ARGS__);
 
-#define stringset(p,s,f,v)      vSetCodField(&p->stCond, sizeof((s).f), (void *)(s).f - (void *)&(s)); \
+#define stringset(p,s,f,v)      vSetCodField(&p->stCond, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
                                 strncpy((s).f, v, sizeof((s).f));
 
-#define stringcpy(p,s,f,v)      vSetCodField(&p->stCond, sizeof((s).f), (void *)(s).f - (void *)&(s)); \
+#define stringcpy(p,s,f,v)      vSetCodField(&p->stCond, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
                                 memcpy(&(s) + ((void *)(s).f - (void *)&(s)), (void *)v, sizeof((s).f));
 
-#define numberset(p,s,f,v)      vSetCodField(&p->stCond, sizeof((s).f), (void *)&(s).f - (void *)&(s)); \
+#define numberset(p,s,f,v)      vSetCodField(&p->stCond, sizeof((s).f), (char *)&(s).f - (char *)&(s)); \
                                 (s).f = v;
 
 #define decorate(p,d,f,v)       vSetDecorate(&p->stUpdt, FLEN(d, f), FPOS(d, f), v); \
                                 p->lFind = (v) & FIRST_ROW;
+
+#define conditset(p,s,f)        vSetCodField(&p->stCond, sizeof((s).f), (char *)&(s).f - (char *)&(s));
 
 #define stringreset(s,f,v)      strncpy((s).f, v, sizeof((s).f));
 #define stringresetv(s,f,...)   snprintf((s).f, sizeof((s).f), __VA_ARGS__);
@@ -369,14 +372,16 @@ typedef long                 CREATE;
 // UPDATE Field assignment
 #define updateinit(s)           memset(&(s), 0, sizeof(s));
 
-#define stringupd(p,s,f,v)      vSetCodField(&p->stUpdt, sizeof((s).f), (void *)(s).f - (void *)&(s)); \
+#define stringupd(p,s,f,v)      vSetCodField(&p->stUpdt, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
                                 strncpy((s).f, v, sizeof((s).f));
 
-#define stringupy(p,s,f,v)      vSetCodField(&p->stUpdt, sizeof((s).f), (void *)(s).f - (void *)&(s)); \
+#define stringupy(p,s,f,v)      vSetCodField(&p->stUpdt, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
                                 memcpy(&(s) + ((void *)(s).f - (void *)&(s)), (void *)v, sizeof((s).f));
 
-#define numberupd(p,s,f,v)      vSetCodField(&p->stUpdt, sizeof((s).f), (void *)&(s).f - (void *)&(s)); \
+#define numberupd(p,s,f,v)      vSetCodField(&p->stUpdt, sizeof((s).f), (char *)&(s).f - (char *)&(s)); \
                                 (s).f = v; 
+
+#define updateset(p,s,f)        vSetCodField(&p->stUpdt, sizeof((s).f), (char *)&(s).f - (char *)&(s));
 
 /*************************************************************************************************
     Table structure & index definition area  
@@ -416,6 +421,7 @@ typedef struct __TBL_COM_KEY
     long    m_lAttr;
     long    m_lIsPk;
     char    m_szField[MAX_FIELD_LEN]; 
+    char    m_szAlias[MAX_FIELD_LEN]; 
 }TblKey;
 
 typedef struct  __TBL_HEAD_DEF
@@ -643,6 +649,7 @@ extern    TblKey*  pGetTblGrp(TABLE t);
 extern    TblKey*  pGetTblKey(TABLE t);
 extern    RWLock*  pGetRWLock(char* pvAddr);
 extern    void     vRedeError(long err, char *s);
+extern    char*    sGetTableName(TABLE t);
 extern    void*    pGetAddr(SATvm *pstSavm, TABLE t);
 extern    RunTime* pGetRunTime(SATvm *pstSavm, TABLE t);
 extern    void*    pGetNode(void *pvData, size_t lOfs);
@@ -701,6 +708,7 @@ extern    void*    pInitSATvm(TABLE t);
 extern    long     lInitSvCache(SATvm *pstSavm);
 extern    void     vInitSATvm(SATvm *pstSavm);
 extern    bool     bTableIsExist(TABLE t);
+extern    long     lAttchTable(SATvm *pstSovm, TABLE t);
 extern    bool     bPartIsExist(char *pszTable, char *pszPart);
 extern    long     lInitSATvm(SATvm *pstSavm, TABLE t);
 extern    void*    pPartSatvm(SATvm *pstSavm, char *pszTable, char *pszPart);
