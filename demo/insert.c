@@ -32,7 +32,7 @@ long    lInsertUserInfo()
     strcpy(stUser.user_nm,    "Savens Liu");             // 对结构体赋值
     strcpy(stUser.user_addr,  "China");                  // 对结构体赋值
     strcpy(stUser.user_phone, "18672911111");            // 对结构体赋值
-    insertinit(pstSavm, stUser, TBL_USER_INFO);          // 绑定变量
+    defineinit(pstSavm, stUser, TBL_USER_INFO);          // 绑定变量
  
     if(RC_SUCC != lInsert(pstSavm))      // 插入记录  
     {

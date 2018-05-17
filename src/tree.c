@@ -1512,8 +1512,8 @@ void*   pPartSATvm(SATvm *pstSavm, char *pszTable, char *pszPart)
 
     pstSavm->bSearch = TYPE_SYSTEM;
     conditinit(pstSavm, stIndex, SYS_TVM_INDEX)
-    stringset(pstSavm, stIndex, m_szPart, pszPart);
-    stringset(pstSavm, stIndex, m_szTable, pszTable);
+    conditstr(pstSavm, stIndex, m_szPart, pszPart);
+    conditstr(pstSavm, stIndex, m_szTable, pszTable);
     if(RC_SUCC != lSelect(pstSavm, (void *)&stIndex))
     {
         if(NO_DATA_FOUND == pstSavm->m_lErrno)
@@ -1559,7 +1559,7 @@ long    lInitSATvm(SATvm *pstSavm, TABLE t)
 
     pstSavm->bSearch = TYPE_SYSTEM;
     conditinit(pstSavm, stIndex, SYS_TVM_INDEX)
-    numberset(pstSavm, stIndex, m_table, t)
+    conditnum(pstSavm, stIndex, m_table, t)
     if(RC_SUCC != lSelect(pstSavm, (void *)&stIndex))
     {
         if(NO_DATA_FOUND == pstSavm->m_lErrno)
@@ -1617,6 +1617,118 @@ key_t   yGetIPCPath(SATvm *pstSavm, Benum em)
     }
 
     return tKey;
+}
+
+/*************************************************************************************************
+    description：set alise
+    parameters:
+        pstSavm                    --stvm handle
+        t                          --table
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    lSetAlias(SATvm *pstSavm, TABLE t, uint ulen, uint uPos, char *alias)
+{
+    register int  i;
+    TblKey   *pstKey = (TblKey *)pGetTblKey(t);
+
+    for(i = 0; i < lGetFldNum(t); i ++)
+    {
+        if(pstKey[i].m_lLen != ulen || pstKey[i].m_lFrom != uPos)
+            continue;
+
+        strncpy(pstKey[i].m_szAlias, alias, sizeof(pstKey[i].m_szAlias));
+        return RC_SUCC;
+    }
+
+    return RC_FAIL;
+}
+
+/*************************************************************************************************
+    description：map the member of struct value by alias
+    parameters:
+        pstSavm                    --stvm handle
+        t                          --table
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long   lSetTructByAlias(SATvm *pstSavm, TABLE t, void *pvData, const char *key, char *v)
+{
+    register int  i;
+    TblKey    *pstKey = (TblKey *)pGetTblKey(t);
+
+    for(i = 0; i < lGetFldNum(t); i ++)
+    {
+        if(strcmp(pstKey[i].m_szAlias, key))
+            continue;
+
+        switch(pstKey[i].m_lAttr)
+        {
+        case FIELD_CHAR:
+            switch(pstKey[i].m_lLen)
+            {
+            case    1:
+                memcpy(v + pstKey[i].m_lFrom, v, pstKey[i].m_lLen);
+                return RC_SUCC;
+            default:
+                strncpy(v + pstKey[i].m_lFrom, v, pstKey[i].m_lLen);
+                return RC_SUCC;
+            }
+            return RC_SUCC;
+        case FIELD_DOUB:
+            switch(pstKey[i].m_lLen)
+            {
+            case    4:
+                *((float *)(v + pstKey[i].m_lFrom)) = atof(v);
+                return RC_SUCC;
+            case    8:
+                *((double *)(v + pstKey[i].m_lFrom)) = atof(v);
+                return RC_SUCC;
+            default:
+                return RC_SUCC;
+            }
+            return RC_SUCC;
+        case FIELD_LONG:
+            switch(pstKey[i].m_lLen)
+            {
+            case    2:
+                *((sint *)(v + pstKey[i].m_lFrom)) = atoi(v);
+                return RC_SUCC;
+            case    4:
+                *((int *)(v + pstKey[i].m_lFrom)) = atoi(v);
+                return RC_SUCC;
+            case    8:
+                *((llong *)(v + pstKey[i].m_lFrom)) = atol(v);
+                return RC_SUCC;
+            default:
+                return RC_SUCC;
+            }
+            return RC_SUCC;
+        }
+    }
+
+    return RC_FAIL;
+}
+
+/*************************************************************************************************
+    description：restore the table define from memory 
+    parameters:
+        pstSavm                    --stvm handle
+        t                          --table
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    lResetDefine(SATvm *pstSavm, TABLE t)
+{
+    RunTime    *pstRun = (RunTime *)pGetRunTime(pstSavm, t);
+
+    if(!pstRun->m_pvAddr)    return RC_FAIL;
+
+    memcpy((void *)pGetTblDef(t), pstRun->m_pvAddr, sizeof(TblDef));
+    return RC_SUCC;
 }
 
 /*************************************************************************************************
@@ -1929,6 +2041,7 @@ long    lSetTableIdx(TABLE t, long lFrom, long lLen, char *pszDesc, long lAttr, 
     pstKey[lGetFldNum(t)].m_lAttr = lAttr;
     pstKey[lGetFldNum(t)].m_lIsPk = lType;
     strncpy(pstKey[lGetFldNum(t)].m_szField, pszDesc, sizeof(pstKey[lGetFldNum(t)].m_szField));
+    strcpy(pstKey[lGetFldNum(t)].m_szAlias, pstKey[lGetFldNum(t)].m_szField);
     ((TblDef *)pGetTblDef(t))->m_lIdxNum ++;
 
     return RC_SUCC;
@@ -1974,7 +2087,7 @@ long    lInsertField(SATvm *pstSavm, TABLE t)
     if(NULL == (pstSavm = (SATvm *)pInitSATvm(SYS_TVM_FIELD)))
         return RC_FAIL;
 
-    insertinit(pstSavm, stField, SYS_TVM_FIELD)
+    defineinit(pstSavm, stField, SYS_TVM_FIELD)
     for(i = 0; i < lIdx; i ++)
     {
         memset(&stField, 0, sizeof(TField));
@@ -8262,7 +8375,7 @@ long    lInitDomain(SATvm *pstSavm)
     if(RC_SUCC != lGetDomainIndex(pstSavm, &lCount, &pstIndex))
         return RC_FAIL;
 
-    insertinit(pstSavm, pstIndex[i], SYS_TVM_INDEX)
+    defineinit(pstSavm, pstIndex[i], SYS_TVM_INDEX)
     for(i = 0; i < lCount; i ++)
     {
         pstIndex[i].m_lValid = 0;
@@ -8289,7 +8402,7 @@ long    lInitDomain(SATvm *pstSavm)
     {
         pstDomain[i].m_lStatus = RESOURCE_STOP;
 
-        insertinit(pstSavm, pstDomain[i], SYS_TVM_DOMAIN)
+        defineinit(pstSavm, pstDomain[i], SYS_TVM_DOMAIN)
         if(RC_SUCC != lInsert(pstSavm))
         {
             TFree(pstDomain);
@@ -8382,7 +8495,7 @@ long    lStartupTvm(TBoot *pstBoot)
         return RC_FAIL;
     */
 
-    insertinit(pstSavm, stIndex, SYS_TVM_INDEX)
+    defineinit(pstSavm, stIndex, SYS_TVM_INDEX)
     if(RC_SUCC != lInsert(pstSavm))
         return RC_FAIL;
 
@@ -8407,7 +8520,7 @@ long    lStartupTvm(TBoot *pstBoot)
     strncpy(stIndex.m_szPart, pstBoot->m_szNode, sizeof(stIndex.m_szPart));
     strncpy(stIndex.m_szTable, sGetTableName(SYS_TVM_FIELD), sizeof(stIndex.m_szTable));
     
-    insertinit(pstSavm, stIndex, SYS_TVM_INDEX)
+    defineinit(pstSavm, stIndex, SYS_TVM_INDEX)
     if(RC_SUCC != lInsert(pstSavm))
         return RC_FAIL;
 
@@ -8435,7 +8548,7 @@ long    lStartupTvm(TBoot *pstBoot)
     strncpy(stIndex.m_szPart, pstBoot->m_szNode, sizeof(stIndex.m_szPart));
     strncpy(stIndex.m_szTable, sGetTableName(SYS_TVM_DOMAIN), sizeof(stIndex.m_szTable));
     
-    insertinit(pstSavm, stIndex, SYS_TVM_INDEX)
+    defineinit(pstSavm, stIndex, SYS_TVM_INDEX)
     if(RC_SUCC != lInsert(pstSavm))
         return RC_FAIL;
 
@@ -8463,7 +8576,7 @@ long    lStartupTvm(TBoot *pstBoot)
     strncpy(stIndex.m_szPart, pstBoot->m_szNode, sizeof(stIndex.m_szPart));
     strncpy(stIndex.m_szTable, sGetTableName(SYS_TVM_SEQUE), sizeof(stIndex.m_szTable));
     
-    insertinit(pstSavm, stIndex, SYS_TVM_INDEX)
+    defineinit(pstSavm, stIndex, SYS_TVM_INDEX)
     if(RC_SUCC != lInsert(pstSavm))
         return RC_FAIL;
 
@@ -8526,8 +8639,8 @@ long    lDropTable(SATvm *pstSavm, TABLE t)
 
     pstSavm->bSearch = TYPE_SYSTEM;
     conditinit(pstSavm, stIndex, SYS_TVM_INDEX)
-    numberset(pstSavm, stIndex, m_table, t)
-    numberset(pstSavm, stIndex, m_lType, TYPE_CLIENT)
+    conditnum(pstSavm, stIndex, m_table, t)
+    conditnum(pstSavm, stIndex, m_lType, TYPE_CLIENT)
     if(RC_SUCC != lSelect(pstSavm, (void *)&stIndex))
         return RC_FAIL;
 
@@ -8535,8 +8648,8 @@ long    lDropTable(SATvm *pstSavm, TABLE t)
     if(RES_REMOT_SID == pstRun->m_lLocal)
     {
         conditinit(pstSavm, stIndex, SYS_TVM_INDEX)
-        numberset(pstSavm, stIndex, m_table, t)
-        numberset(pstSavm, stIndex, m_lType, TYPE_CLIENT)
+        conditnum(pstSavm, stIndex, m_table, t)
+        conditnum(pstSavm, stIndex, m_lType, TYPE_CLIENT)
         if(RC_SUCC != lDelete(pstSavm))
             return RC_FAIL;
 
@@ -8560,8 +8673,8 @@ long    lDropTable(SATvm *pstSavm, TABLE t)
     semctl(stIndex.m_semID, 0, IPC_RMID, 0);
 
     conditinit(pstSavm, stIndex, SYS_TVM_INDEX)
-    numberset(pstSavm, stIndex, m_table, t)
-    numberset(pstSavm, stIndex, m_lType, TYPE_CLIENT)
+    conditnum(pstSavm, stIndex, m_table, t)
+    conditnum(pstSavm, stIndex, m_lType, TYPE_CLIENT)
     if(RC_SUCC != lDelete(pstSavm))    return RC_FAIL;
 
     // Delete the field table
@@ -8569,7 +8682,7 @@ long    lDropTable(SATvm *pstSavm, TABLE t)
         return RC_FAIL;
 
     conditinit(pstSavm, stField, SYS_TVM_FIELD)
-    numberset(pstSavm, stField, m_table, t)
+    conditnum(pstSavm, stField, m_table, t)
     if(RC_SUCC != lDelete(pstSavm))    return RC_FAIL;
 
     memset(pstRun, 0, sizeof(RunTime));
@@ -8979,7 +9092,7 @@ long    lGetTblField(TABLE t, size_t *plOut, TField **ppstField)
         return RC_FAIL;
     
     conditinit(pstSavm, stField, SYS_TVM_FIELD)
-    numberset(pstSavm, stField, m_table, t)
+    conditnum(pstSavm, stField, m_table, t)
     return lQuery(pstSavm, plOut, (void **)ppstField);
 }
 
@@ -9006,9 +9119,9 @@ long    lGetTblIndex(SATvm *pstSavm, char *pszTable, char *pszPart, TIndex *pstI
 
     pstSavm->bSearch = TYPE_SYSTEM;
     conditinit(pstSavm, stIndex, SYS_TVM_INDEX);
-    stringset(pstSavm, stIndex, m_szPart, pszPart);
-    stringset(pstSavm, stIndex, m_szTable, pszTable);
-    numberset(pstSavm, stIndex, m_lLocal, RES_LOCAL_SID);
+    conditstr(pstSavm, stIndex, m_szPart, pszPart);
+    conditstr(pstSavm, stIndex, m_szTable, pszTable);
+    conditnum(pstSavm, stIndex, m_lLocal, RES_LOCAL_SID);
     if(RC_SUCC != lSelect(pstSavm, (void *)pstIndex))
     {
         if(NO_DATA_FOUND == pstSavm->m_lErrno)
@@ -9040,12 +9153,12 @@ long    lUpdIndexPart(SATvm *pstSavm, TABLE t, char *pszPart)
     }
 
     pstSavm->bSearch = TYPE_SYSTEM;
-    updateinit(stUpdate);
+    updateinit(pstSavm, stUpdate);
     conditinit(pstSavm, stIndex, SYS_TVM_INDEX);
-    numberset(pstSavm, stIndex, m_table, t)
-    numberset(pstSavm, stIndex, m_lLocal, RES_LOCAL_SID);
+    conditnum(pstSavm, stIndex, m_table, t)
+    conditnum(pstSavm, stIndex, m_lLocal, RES_LOCAL_SID);
 
-    stringupd(pstSavm, stUpdate, m_szPart, pszPart);
+    updatestr(pstSavm, stUpdate, m_szPart, pszPart);
     return lUpdate(pstSavm, &stUpdate);
 }
 
@@ -9064,7 +9177,7 @@ bool    bTableIsExist(TABLE t)
 
     pstSavm->bSearch = TYPE_SYSTEM;
     conditinit(pstSavm, stIndex, SYS_TVM_INDEX)
-    numberset(pstSavm, stIndex, m_table, t)
+    conditnum(pstSavm, stIndex, m_table, t)
     if(RC_SUCC != lSelect(pstSavm, (void *)&stIndex))
         return false;
 
@@ -9088,10 +9201,10 @@ long    lRenameTable(SATvm *pstSavm, TABLE to, TABLE tn)
     TField  stField, stNFld;
 
     pstSavm->bSearch = TYPE_SYSTEM;
-    updateinit(stNIdx);
+    updateinit(pstSavm, stNIdx);
     conditinit(pstSavm, stIndex, SYS_TVM_INDEX);
-    numberset(pstSavm, stIndex, m_table, to);
-    numberupd(pstSavm, stNIdx, m_table, tn);
+    conditnum(pstSavm, stIndex, m_table, to);
+    updatenum(pstSavm, stNIdx, m_table, tn);
 
     if(RC_SUCC != lUpdate(pstSavm, &stNIdx))
         return RC_FAIL;
@@ -9114,10 +9227,10 @@ long    lRenameTable(SATvm *pstSavm, TABLE to, TABLE tn)
     if(RC_SUCC != lInitSATvm(pstSavm, SYS_TVM_FIELD))
         return RC_FAIL;
 
-    updateinit(stNFld);
+    updateinit(pstSavm, stNFld);
     conditinit(pstSavm, stField, SYS_TVM_FIELD);
-    numberset(pstSavm, stField, m_table, to);
-    numberupd(pstSavm, stNFld, m_table, tn);
+    conditnum(pstSavm, stField, m_table, to);
+    updatenum(pstSavm, stNFld, m_table, tn);
     return lUpdate(pstSavm, &stNFld);
 }
 
@@ -9136,9 +9249,9 @@ bool    bPartIsExist(char *pszTable, char *pszPart)
 
     pstSavm->bSearch = TYPE_SYSTEM;
     conditinit(pstSavm, stIndex, SYS_TVM_INDEX)
-    stringset(pstSavm, stIndex, m_szPart, pszPart)
-    stringset(pstSavm, stIndex, m_szTable, pszTable)
-    numberset(pstSavm, stIndex, m_lLocal, RES_LOCAL_SID)
+    conditstr(pstSavm, stIndex, m_szPart, pszPart)
+    conditstr(pstSavm, stIndex, m_szTable, pszTable)
+    conditnum(pstSavm, stIndex, m_lLocal, RES_LOCAL_SID)
     if(RC_SUCC != lSelect(pstSavm, (void *)&stIndex))
     {
         if(MORE_ROWS_SEL == pstSavm->m_lErrno)
@@ -9171,7 +9284,7 @@ long    lTableMaxRow(SATvm *pstSavm, TABLE t)
 
     pstSavm->bSearch = TYPE_SYSTEM;
     conditinit(pstSavm, stIndex, SYS_TVM_INDEX)
-    numberset(pstSavm, stIndex, m_table, t)
+    conditnum(pstSavm, stIndex, m_table, t)
     if(RC_SUCC != lSelect(pstSavm, (void *)&stIndex))
         return RC_FAIL;
 

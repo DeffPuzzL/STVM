@@ -775,14 +775,14 @@ long    lUpdateDomain(SATvm *pstSavm, char *pszIp, long lPort, long lStatus)
     if(RC_SUCC != lInitSATvm(pstSavm, SYS_TVM_DOMAIN))
         return RC_FAIL;
 
-    updateinit(stUpdate);
+    updateinit(pstSavm, stUpdate);
     conditinit(pstSavm, stDomain, SYS_TVM_DOMAIN);
-    numberset(pstSavm, stDomain, m_lPort, lPort)
-    stringset(pstSavm, stDomain, m_szIp, pszIp);
+    conditnum(pstSavm, stDomain, m_lPort, lPort)
+    conditstr(pstSavm, stDomain, m_szIp, pszIp);
 
-    numberupd(pstSavm, stUpdate, m_lStatus, lStatus);
+    updatenum(pstSavm, stUpdate, m_lStatus, lStatus);
     if(RESOURCE_ABLE != lStatus) 
-        numberupd(pstSavm, stUpdate, m_lPers, 0);
+        updatenum(pstSavm, stUpdate, m_lPers, 0);
     if(RC_SUCC != lUpdate(pstSavm, (void *)&stUpdate))
     {
         Tlog("update domain (%s:%d) failure, %s\n", pszIp, lPort, sGetTError(pstSavm->m_lErrno));
@@ -813,10 +813,10 @@ long    _lRemodeIndex(SATvm *pstSavm, TFace *pstFace, TDomain *pstDom, TIndex *p
         return RC_FAIL;
 
     conditinit(pstSavm, stDomain, SYS_TVM_DOMAIN);
-    numberset(pstSavm, stDomain, m_lPort, pstDom->m_lPort);
-    stringset(pstSavm, stDomain, m_szIp, pstDom->m_szIp);
-    numberupd(pstSavm, stRemote, m_lStatus, RESOURCE_AUTH);
-    numberupd(pstSavm, stRemote, m_lPers, 0);
+    conditnum(pstSavm, stDomain, m_lPort, pstDom->m_lPort);
+    conditstr(pstSavm, stDomain, m_szIp, pstDom->m_szIp);
+    updatenum(pstSavm, stRemote, m_lStatus, RESOURCE_AUTH);
+    updatenum(pstSavm, stRemote, m_lPers, 0);
     if(RC_SUCC != lUpdate(pstSavm, (void *)&stRemote))
     {
         if(NO_DATA_FOUND != pstSavm->m_lErrno)
@@ -826,20 +826,20 @@ long    _lRemodeIndex(SATvm *pstSavm, TFace *pstFace, TDomain *pstDom, TIndex *p
     conditinit(pstSavm, stDomain, SYS_TVM_DOMAIN);
     for(i = 0; i < pstFace->m_lRows; i ++)
     {
-        numberset(pstSavm, stDomain, m_lPort, pstDom->m_lPort);
-        numberset(pstSavm, stDomain, m_mtable, pstIndex[i].m_table);
-        stringset(pstSavm, stDomain, m_szIp, pstDom->m_szIp);
+        conditnum(pstSavm, stDomain, m_lPort, pstDom->m_lPort);
+        conditnum(pstSavm, stDomain, m_mtable, pstIndex[i].m_table);
+        conditstr(pstSavm, stDomain, m_szIp, pstDom->m_szIp);
 
-        updateinit(stRemote);
-        numberupd(pstSavm, stRemote, m_lLastTime, time(NULL));
-        numberupd(pstSavm, stRemote, m_lTryTimes, 0);
-        numberupd(pstSavm, stRemote, m_lStatus, RESOURCE_ABLE);
-        numberupd(pstSavm, stRemote, m_skSock, pstDom->m_skSock);
-        numberupd(pstSavm, stRemote, m_lPers, pstIndex[i].m_lPers);
-        numberupd(pstSavm, stRemote, m_mtable, pstIndex[i].m_table);
-        numberupd(pstSavm, stRemote, m_lRowSize, pstIndex[i].m_lRowSize);
-        stringupd(pstSavm, stRemote, m_szPart, pstIndex[i].m_szPart);
-        stringupd(pstSavm, stRemote, m_szTable, pstIndex[i].m_szTable);
+        updateinit(pstSavm, stRemote);
+        updatenum(pstSavm, stRemote, m_lLastTime, time(NULL));
+        updatenum(pstSavm, stRemote, m_lTryTimes, 0);
+        updatenum(pstSavm, stRemote, m_lStatus, RESOURCE_ABLE);
+        updatenum(pstSavm, stRemote, m_skSock, pstDom->m_skSock);
+        updatenum(pstSavm, stRemote, m_lPers, pstIndex[i].m_lPers);
+        updatenum(pstSavm, stRemote, m_mtable, pstIndex[i].m_table);
+        updatenum(pstSavm, stRemote, m_lRowSize, pstIndex[i].m_lRowSize);
+        updatestr(pstSavm, stRemote, m_szPart, pstIndex[i].m_szPart);
+        updatestr(pstSavm, stRemote, m_szTable, pstIndex[i].m_szTable);
 
         if(RC_SUCC != lUpdate(pstSavm, (void *)&stRemote))
         {
@@ -879,8 +879,8 @@ long    _lLocalIndex(SATvm *pstSavm, TFace *pstFace, BSock skSock)
         return RC_FAIL;
 
     conditinit(pstSavm, stIndex, SYS_TVM_INDEX);
-    numberset(pstSavm, stIndex, m_lType, TYPE_CLIENT);
-    numberset(pstSavm, stIndex, m_lLocal, RES_LOCAL_SID);
+    conditnum(pstSavm, stIndex, m_lType, TYPE_CLIENT);
+    conditnum(pstSavm, stIndex, m_lLocal, RES_LOCAL_SID);
     if(RC_SUCC != lQuery(pstSavm, (size_t *)&pstFace->m_lRows, (void *)&pvOut))
     {
         if(NO_DATA_FOUND != pstSavm->m_lErrno)
@@ -2208,7 +2208,7 @@ long    lCacheDomain(SATvm *pstSavm, Benum eMode, long lPort)
     for(list = pGetTblgrp(); list; list = list->pstNext)
     {
         conditinit(pstSavm, stDomain, SYS_TVM_DOMAIN);
-        numberset(pstSavm, stDomain, m_table, *((TABLE *)list->psvData));
+        conditnum(pstSavm, stDomain, m_table, *((TABLE *)list->psvData));
         if(RC_SUCC != lQuery(pstSavm, &lOut, (void *)&pstDom))
             return RC_FAIL;
 
@@ -3471,10 +3471,10 @@ long    _lRenameTableByRt(SATvm *pstSavm, TABLE to, TABLE tn)
     if(RC_SUCC != lInitSATvm(pstSavm, SYS_TVM_DOMAIN))
         return RC_FAIL;
 
-    updateinit(stUpd);
+    updateinit(pstSavm, stUpd);
     conditinit(pstSavm, stDom, SYS_TVM_DOMAIN);
-    numberset(pstSavm, stDom, m_table, to)
-    numberupd(pstSavm, stUpd, m_table, tn);
+    conditnum(pstSavm, stDom, m_table, to)
+    updatenum(pstSavm, stUpd, m_table, tn);
 
     if(RC_SUCC != lUpdate(pstSavm, &stUpd))
         return RC_FAIL;
@@ -5077,9 +5077,9 @@ long    lTvmGetTblIndex(SATvm *pstSavm, char *pszTable, char *pszPart, TIndex *p
 
     pstSavm->bSearch = TYPE_SYSTEM;
     conditinit(pstSavm, stIndex, SYS_TVM_INDEX);
-    stringset(pstSavm, stIndex, m_szPart, pszPart);
-    stringset(pstSavm, stIndex, m_szTable, pszTable);
-    numberset(pstSavm, stIndex, m_lLocal, RES_LOCAL_SID);
+    conditstr(pstSavm, stIndex, m_szPart, pszPart);
+    conditstr(pstSavm, stIndex, m_szTable, pszTable);
+    conditnum(pstSavm, stIndex, m_lLocal, RES_LOCAL_SID);
     if(RC_SUCC != lTvmSelect(pstSavm, (void *)pstIndex))
     {
         if(NO_DATA_FOUND == pstSavm->m_lErrno)
@@ -5106,7 +5106,7 @@ long    lTvmGetTblField(SATvm *pstSavm, TABLE t, size_t *plOut, TField **ppstFie
     TField  stField; 
     
     conditinit(pstSavm, stField, SYS_TVM_FIELD)
-    numberset(pstSavm, stField, m_table, t);
+    conditnum(pstSavm, stField, m_table, t);
 
     return lTvmQuery(pstSavm, plOut, (void **)ppstField);
 }

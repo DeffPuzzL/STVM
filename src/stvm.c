@@ -68,7 +68,7 @@ static  char*   sGetTVMVers()
     sprintf(szVersion + strlen(szVersion), "Release STVM %s Production on %s %s\n",
         TVM_VERSION, sinf.sysname, sinf.machine);
 
-    strcat(szVersion, "Author：DeffPuzzL\n");
+    strcat(szVersion, "Author：Savens Liu\n");
     strcat(szVersion, "Mail：deffpuzzl@qq.com\n");
 
     return szVersion;
@@ -1173,6 +1173,139 @@ SQLFld*    pSortSQLField(SQLFld *pstRoot)
     }
 
      return pstRoot;
+}
+
+/*************************************************************************************************
+    description：show stvm tables
+    parameters：
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+  *************************************************************************************************/
+long    lShowTables(SATvm *pstSavm)
+{
+	char	szTable[128];
+    TIndex  stIndex, *pstIndex = NULL;
+    long    i, lRows = 0, lTime = lGetTiskTime();
+   
+    if(RC_SUCC != lInitSATvm(pstSavm, SYS_TVM_INDEX))
+        return RC_FAIL;
+
+	conditinit(pstSavm, stIndex, SYS_TVM_INDEX);
+    conditnum(pstSavm, stIndex, m_lLocal, RES_LOCAL_SID); 
+
+    if(RC_SUCC != lQuery(pstSavm, &lRows, (void **)&pstIndex))
+        return RC_FAIL;
+
+    fprintf(stdout, "table table_name\n");
+	for(i = 0; i < lRows; i ++)
+	{
+		memset(szTable, 0, sizeof(szTable));
+		if(!strcmp(pstIndex[i].m_szPart, pstIndex[i].m_szOwner))
+            strcpy(szTable, pstIndex[i].m_szTable);
+		else
+            snprintf(szTable, sizeof(szTable), "%s@%s", pstIndex[i].m_szPart, pstIndex[i].m_szTable);
+        fprintf(stdout, "%3d   %s\n", pstIndex[i].m_table, szTable);
+	}
+
+    lTime -= lGetTiskTime();
+	TFree(pstIndex);
+    fprintf(stdout, "---(%ld) records selected, ep(%d), %s---\n", pstSavm->m_lEffect, 
+        pstSavm->m_lEType, sGetCostTime(-1 * lTime));
+    return RC_SUCC;
+}
+
+/**************************************************************************************************
+    description：Output table space Usage
+    parameters：
+    return：
+ **************************************************************************************************/
+void    vPrintAmount(int t, char *pszTable, int nValid, int nMax)
+{
+    double  dPer;
+    int     i, nPer;
+
+    if(nValid < 0 || nMax <= 0)   return ;
+
+    dPer = nValid * 100.0 / nMax;
+    nPer = nValid * 50 / nMax > 0 ? nValid * 50 / nMax : 1;
+
+    fprintf(stdout, "TABLE:[%3d][%-20s]: [", t, pszTable);
+    if(dPer < 60.00)
+        fprintf(stdout, "\033[42;32m");
+    else if(dPer < 70.00)
+        fprintf(stdout, "\033[45;35m");
+    else if(dPer < 80.00)
+        fprintf(stdout, "\033[46;36m");
+    else  if(dPer < 90.00)
+        fprintf(stdout, "\033[43;33m");
+    else
+        fprintf(stdout, "\033[41;31m");
+
+    fflush(stdout);
+    for(i = 0; i < nPer; i ++)
+    {
+        fprintf(stdout, "|");
+        fflush(stdout);
+    }
+
+    fprintf(stdout, "\033[0m");
+    for(i; i < 50; i ++)
+        fprintf(stdout, " ");
+    fprintf(stdout, "] %.4f%%, (%d/%d)\n", dPer, nValid, nMax);
+    fflush(stdout);
+}
+
+/**************************************************************************************************
+    description：print system table space usage
+    parameters：
+    return：
+ **************************************************************************************************/
+void    vTableAmount()
+{
+    size_t  i, lOut = 0;
+	char	szTable[128];
+    RunTime *pstRun = NULL;
+    TIndex  stIndex, *pstIndex = NULL;
+    SATvm   *pstSavm = (SATvm *)pGetSATvm();
+
+    memset(&stIndex, 0, sizeof(TIndex));
+    stIndex.m_lLocal = RES_LOCAL_SID;
+
+    pstSavm->pstVoid = &stIndex;
+    pstSavm->bSearch = TYPE_SYSTEM;
+    pstSavm->tblName = SYS_TVM_INDEX;
+    pstSavm->lSize   = sizeof(TIndex);
+    if(RC_SUCC != lQuery(pstSavm, &lOut, (void *)&pstIndex))
+    {
+        if(NO_DATA_FOUND == pstSavm->m_lErrno)
+            pstSavm->m_lErrno = TBL_NOT_FOUND;
+        return ;
+    }
+
+    if(lOut <= 0)    return ;
+
+    fprintf(stdout, "The amount of table is using as follows:\n\n");
+    for(i = 0; i < lOut; i ++)
+    {
+        pstRun = (RunTime *)pGetRunTime(pstSavm, pstIndex[i].m_table);
+        pstRun->m_shmID  = pstIndex[i].m_shmID;
+        if(NULL == (pstRun = pInitHitTest(pstSavm, pstIndex[i].m_table)))
+            continue;
+
+		memset(szTable, 0, sizeof(szTable));
+		if(!strcmp(pstIndex[i].m_szPart, pstIndex[i].m_szOwner))
+            strcpy(szTable, pstIndex[i].m_szTable);
+		else
+            snprintf(szTable, sizeof(szTable), "%s@%s", pstIndex[i].m_szPart, pstIndex[i].m_szTable);
+
+        vPrintAmount(pstIndex[i].m_table, szTable, lGetTblValid(pstIndex[i].m_table),
+             lGetTblRow(pstIndex[i].m_table));
+        vTblDisconnect(pstSavm, pstIndex[i].m_table);
+    }
+    TFree(pstIndex);
+    fprintf(stdout, "\n");
+
+    return ;
 }
 
 /*************************************************************************************************
@@ -3474,6 +3607,13 @@ long    lExecuteSQL(SATvm *pstSavm, char *pszSQL)
             sGetTError(pstSavm->m_lErrno));
         return RC_SUCC;
     }
+    else if(!strcasecmp(pszSQL, "show tables"))
+        return lShowTables(pstSavm);    
+    else if(!strcasecmp(pszSQL, "show info"))
+    {
+        vTableAmount();
+        return RC_SUCC;
+    }
     else if(!strncasecmp(pszSQL, "comment ", 8))
         return _lCommentSyntax(pstSavm, pszSQL + 8, false);
     else if(!strncasecmp(pszSQL, "select ", 7))
@@ -3717,93 +3857,6 @@ void    vPrintParam(char *pszOpt)
 }
 
 /**************************************************************************************************
-    description：Output table space Usage
-    parameters：
-    return：
- **************************************************************************************************/
-void    vPrintAmount(int t, char *pszTable, int nValid, int nMax)
-{
-    double  dPer;
-    int     i, nPer;
-
-    if(nValid < 0 || nMax <= 0)   return ;
-
-    dPer = nValid * 100.0 / nMax;
-    nPer = nValid * 50 / nMax > 0 ? nValid * 50 / nMax : 1;
-
-    fprintf(stdout, "TABLE:[%3d][%-20s]: [", t, pszTable);
-    if(dPer < 60.00)
-        fprintf(stdout, "\033[42;32m");
-    else if(dPer < 70.00)
-        fprintf(stdout, "\033[45;35m");
-    else if(dPer < 80.00)
-        fprintf(stdout, "\033[46;36m");
-    else  if(dPer < 90.00)
-        fprintf(stdout, "\033[43;33m");
-    else
-        fprintf(stdout, "\033[41;31m");
-
-    fflush(stdout);
-    for(i = 0; i < nPer; i ++)
-    {
-        fprintf(stdout, "|");
-        fflush(stdout);
-    }
-
-    fprintf(stdout, "\033[0m");
-    for(i; i < 50; i ++)
-        fprintf(stdout, " ");
-    fprintf(stdout, "] %.4f%%, (%d/%d)\n", dPer, nValid, nMax);
-    fflush(stdout);
-}
-
-/**************************************************************************************************
-    description：print system table space usage
-    parameters：
-    return：
- **************************************************************************************************/
-void    vTableAmount()
-{
-    size_t  i, lOut = 0;
-    RunTime *pstRun = NULL;
-    TIndex  stIndex, *pstIndex = NULL;
-    SATvm   *pstSavm = (SATvm *)pGetSATvm();
-
-    memset(&stIndex, 0, sizeof(TIndex));
-    stIndex.m_lLocal = RES_LOCAL_SID;
-
-    pstSavm->pstVoid = &stIndex;
-    pstSavm->bSearch = TYPE_SYSTEM;
-    pstSavm->tblName = SYS_TVM_INDEX;
-    pstSavm->lSize   = sizeof(TIndex);
-    if(RC_SUCC != lQuery(pstSavm, &lOut, (void *)&pstIndex))
-    {
-        if(NO_DATA_FOUND == pstSavm->m_lErrno)
-            pstSavm->m_lErrno = TBL_NOT_FOUND;
-        return ;
-    }
-
-    if(lOut <= 0)    return ;
-
-    fprintf(stdout, "The amount of table is using as follows:\n\n");
-    for(i = 0; i < lOut; i ++)
-    {
-        pstRun = (RunTime *)pGetRunTime(pstSavm, pstIndex[i].m_table);
-        pstRun->m_shmID  = pstIndex[i].m_shmID;
-        if(NULL == (pstRun = pInitHitTest(pstSavm, pstIndex[i].m_table)))
-            continue;
-
-        vPrintAmount(pstIndex[i].m_table, pstIndex[i].m_szTable, lGetTblValid(pstIndex[i].m_table),
-             lGetTblRow(pstIndex[i].m_table));
-        vTblDisconnect(pstSavm, pstIndex[i].m_table);
-    }
-    TFree(pstIndex);
-    fprintf(stdout, "\n");
-
-    return ;
-}
-
-/**************************************************************************************************
     description：STVM operation function description
     parameters：
     return：
@@ -4014,7 +4067,9 @@ void    vSQLStatement(int argc, char *argv[])
             strimcrlf(szSQL);
             sltrim(szSQL);
             srtrim(szSQL);
-            if(!strlen(szSQL))    continue;
+            if(!strlen(szSQL) || !strncmp(szSQL, "--", 2) || !strncmp(szSQL, "//", 2) || 
+               '#' == szSQL[0])
+               continue;
 
             add_history(szSQL);
             sfieldreplace(szSQL, '\t', ' ');
@@ -4110,7 +4165,7 @@ void    vConnectDomain(char *pszDomain, TBoot *pstBoot)
     }
 
     conditinit(pstSavm, stDomain, SYS_TVM_DOMAIN);
-    stringset(pstSavm, stDomain, m_szOwner, pszDomain);
+    conditstr(pstSavm, stDomain, m_szOwner, pszDomain);
     decorate(pstSavm, TDomain, m_szOwner, FIRST_ROW);
     if(RC_SUCC != lSelect(pstSavm, (void *)&stDomain))
     {
@@ -4157,7 +4212,7 @@ void    vPullTableDomain(char *pszParam)
     }
 
     conditinit(pstSavm, stDomain, SYS_TVM_DOMAIN);
-    stringset(pstSavm, stDomain, m_szOwner, sgetvalue(pszParam, "/", 1));
+    conditstr(pstSavm, stDomain, m_szOwner, sgetvalue(pszParam, "/", 1));
     if(!strlen(strimall(stDomain.m_szOwner)))
     {
         fprintf(stderr, "*illegal domain name\n");
@@ -4169,7 +4224,7 @@ void    vPullTableDomain(char *pszParam)
     strncpy(szTable, sgetvalue(szCmd, " ", 1), sizeof(szTable));
     strimall(szTable);
 
-    stringset(pstSavm, stDomain, m_szTable, sgetvalue(szTable, "@", 1));
+    conditstr(pstSavm, stDomain, m_szTable, sgetvalue(szTable, "@", 1));
     supper(stDomain.m_szTable);
     if(!strlen(stDomain.m_szTable))
     {
@@ -4177,7 +4232,7 @@ void    vPullTableDomain(char *pszParam)
         return ;
     }
 
-    stringset(pstSavm, stDomain, m_szPart, sgetvalue(szTable, "@", 2));
+    conditstr(pstSavm, stDomain, m_szPart, sgetvalue(szTable, "@", 2));
     if(!strlen(stDomain.m_szPart))
         strcpy(stDomain.m_szPart, stDomain.m_szOwner);
 

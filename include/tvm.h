@@ -33,7 +33,7 @@ typedef long                 CREATE;
 //#pragma pack(4)
 
 #define TVM_VKERNEL                        "1.2.0.0"
-#define TVM_VERSION                        "1.2.2.0"
+#define TVM_VERSION                        "1.2.3.0"
 /*************************************************************************************************
    custom macro
  *************************************************************************************************/
@@ -322,12 +322,6 @@ typedef long                 CREATE;
                                    p->pstVoid = (void *)&(s);  \
                                 }while(0);
 
-#define insertinit(p,s,t)       do{ \
-                                   p->lSize = sizeof(s); \
-                                   p->tblName = t; \
-                                   p->pstVoid = (void *)&(s);  \
-                                }while(0);
-
 #define conditinit(p,s,t)       do{ \
                                    p->stCond.uFldcmp = 0; \
                                    p->stUpdt.uFldcmp = 0; \
@@ -362,15 +356,26 @@ typedef long                 CREATE;
 #define decorate(p,d,f,v)       vSetDecorate(&p->stUpdt, FLEN(d, f), FPOS(d, f), v); \
                                 p->lFind = (v) & FIRST_ROW;
 
-#define conditset(p,s,f)        vSetCodField(&p->stCond, sizeof((s).f), (char *)&(s).f - (char *)&(s));
-
 #define stringreset(s,f,v)      strncpy((s).f, v, sizeof((s).f));
 #define stringresetv(s,f,...)   snprintf((s).f, sizeof((s).f), __VA_ARGS__);
 #define stringrecpy(s,f,v)      memcpy((s).f, v, sizeof((s).f));
 #define numberreset(s,f,v)      (s).f = v;
+#define conditset(p,s,f)        vSetCodField(&p->stCond, sizeof((s).f), (char *)&(s).f - (char *)&(s));
+
+#define conditbind              defineinit
+#define conditfld               conditset
+#define conditnum               numberset
+#define conditstr               stringset
+#define conditcpy               stringcpy
+#define conditstv               stringsetv
+#define conditrenum             numberreset
+#define conditrestr             stringreset
+#define conditrecpy             stringrecpy
+#define conditrestv             stringresetv
 
 // UPDATE Field assignment
-#define updateinit(s)           memset(&(s), 0, sizeof(s));
+#define updateinit(p, s)        memset(&(s), 0, sizeof(s));
+//#define updateinit(p, s)        p->stUpdt.uFldcmp = 0; memset(&(s), 0, sizeof(s));
 
 #define stringupd(p,s,f,v)      vSetCodField(&p->stUpdt, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
                                 strncpy((s).f, v, sizeof((s).f));
@@ -381,8 +386,23 @@ typedef long                 CREATE;
 #define numberupd(p,s,f,v)      vSetCodField(&p->stUpdt, sizeof((s).f), (char *)&(s).f - (char *)&(s)); \
                                 (s).f = v; 
 
-#define updateset(p,s,f)        vSetCodField(&p->stUpdt, sizeof((s).f), (char *)&(s).f - (char *)&(s));
+#define updatestrv(p,s,f,...)   vSetCodField(&p->stUpdt, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
+                                snprintf((s).f, sizeof((s).f), __VA_ARGS__);
 
+#define updateset(p,s,f)        vSetCodField(&p->stUpdt, sizeof((s).f), (char *)&(s).f - (char *)&(s));
+#define updatefld               updateset
+#define updatenum               numberupd
+#define updatestr               stringupd
+#define updatecpy               stringupy
+#define updatestv               updatestrv
+#define updaterenum(s,f,v)      (s).f = v;
+#define updaterestr(s,f,v)      strncpy((s).f, v, sizeof((s).f));
+#define updaterecpy(s,f,v)      memcpy((s).f, v, sizeof((s).f));
+#define updaterestv(s,f,...)    snprintf((s).f, sizeof((s).f), __VA_ARGS__);
+
+#define aliasreset(p,t)         lResetDefine(p, t);
+#define aliasvalue(p,t,s,a,v)   lSetTructByAlias(p, t, s, a, v);
+#define aliasset(p,t,s,f,v)     lSetAlias(p, t, FLEN(s, f), FPOS(s, f), v);
 /*************************************************************************************************
     Table structure & index definition area  
  *************************************************************************************************/
@@ -653,6 +673,7 @@ extern    char*    sGetTableName(TABLE t);
 extern    void*    pGetAddr(SATvm *pstSavm, TABLE t);
 extern    RunTime* pGetRunTime(SATvm *pstSavm, TABLE t);
 extern    void*    pGetNode(void *pvData, size_t lOfs);
+extern    long     lResetDefine(SATvm *pstSavm, TABLE t);
 extern    void*    pInitMemTable(SATvm *pstSavm, TABLE t);
 extern    void*    pInitHitTest(SATvm *pstSavm, TABLE t);
 extern    long     lTableMaxRow(SATvm *pstSavm, TABLE t);
@@ -665,6 +686,7 @@ extern    TblKey*  pFindField(TblKey *pstIdx, long lNum, char *pszField);
 extern    long     lGetTblField(TABLE t, size_t *plOut, TField **ppstField);
 extern    void     vSetCodField(FdCond *pstCond, uint ulen, uint uPos);
 extern    bool     bSetCondAttr(FdCond *pstCond, TABLE t, Uenum eCheck);
+extern    long     lSetAlias(SATvm *pstSavm, TABLE t, uint ulen, uint uPos, char *alias);
 extern    void     vSetDecorate(FdCond *pstCond, uint ulen, uint uPos, Uenum em);
 extern    long     lGetDomainIndex(SATvm *pstSavm, long *plOut, TIndex **ppstIndex);
 extern    long     lGetDomainTable(SATvm *pstSavm, long *plOut, TDomain **ppstDomain);
@@ -729,6 +751,7 @@ extern    long     lExportFile(TABLE t, char *pszFile, char *pszFlag);
 extern    long     lImportTable(TABLE t, size_t lCount, void *psvOut);
 extern    long     lExportTable(TABLE t, size_t *plOut, void **ppsvOut);
 extern    long     lDumpTable(SATvm *pstSavm, TABLE t);
+extern    void     vSetTructByAlias(SATvm *pstSavm, TABLE t, void *pvData, const char *key, char *v);
 
 extern    long     lRenameTable(SATvm *pstSavm, TABLE to, TABLE tn);
 extern    long     lCreateSeque(SATvm *pstSavm, char *pszSQName, uint uIncre);
