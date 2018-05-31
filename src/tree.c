@@ -5485,7 +5485,7 @@ long    _lSelectIndex(SATvm *pstSavm, void *pvAddr, TABLE t, void *psvOut, size_
     if(RC_MISMA == lFeildMatch(&pstSavm->stCond, pstTruck->m_pvData, pstSavm->pstVoid))
     {
         pthread_rwlock_unlock(prwLock);
-        pstSavm->m_lErrno = SVR_EXCEPTION;
+        pstSavm->m_lErrno = NO_DATA_FOUND;
         return RC_FAIL;
     }
 
@@ -5916,7 +5916,7 @@ long    _lQueryIndex(SATvm *pstSavm, void *pvAddr, TABLE t, size_t *plOut, void 
     pstTruck = (PSHTruck)pGetNode(pvAddr, pstTree->m_lData);
     if(RC_MISMA == lFeildMatch(&pstSavm->stCond, pstTruck->m_pvData, pstSavm->pstVoid))
     {
-        pstSavm->m_lErrno = SVR_EXCEPTION;
+        pstSavm->m_lErrno = NO_DATA_FOUND;
         return RC_FAIL;
     }
 
@@ -6443,6 +6443,12 @@ long    __lInsert(SATvm *pstSavm, void *pvAddr, TABLE t, ulong uTimes)
 {
     SHTruck *pstTruck = NULL;
 
+    if(lGetTblRow(pstSavm->tblName) <= ((TblDef *)pvAddr)->m_lValid)
+    {
+        pstSavm->m_lErrno = DATA_SPC_FULL;
+        return RC_FAIL;
+    }
+
     if(HAVE_UNIQ_IDX(t))
     {
         if(RC_SUCC != _lInsertIndex(pstSavm, pvAddr, t, &pstTruck))
@@ -6531,14 +6537,6 @@ long    lInsert(SATvm *pstSavm)
     if(RC_SUCC != pthread_rwlock_wrlock(prwLock))
     {
         pstSavm->m_lErrno = LOCK_DOWR_ERR;
-        vTblDisconnect(pstSavm, pstSavm->tblName);
-        return RC_FAIL;
-    }
-
-    if(lGetTblRow(pstSavm->tblName) <= ((TblDef *)pstRun->m_pvAddr)->m_lValid)
-    {
-        pthread_rwlock_unlock(prwLock);
-        pstSavm->m_lErrno = DATA_SPC_FULL;
         vTblDisconnect(pstSavm, pstSavm->tblName);
         return RC_FAIL;
     }
@@ -6678,7 +6676,7 @@ long    _llFetchIndex(SATvm *pstSavm, RunTime *pstRun, TABLE t, void *psvOut)
     pstTruck = (PSHTruck)pGetNode(pvAddr, pstTree->m_lData);
     if(RC_MISMA == lFeildMatch(&pstSavm->stCond, pstTruck->m_pvData, pstRun->pstVoid))
     {
-        pstSavm->m_lErrno = SVR_EXCEPTION;
+        pstSavm->m_lErrno = NO_DATA_FOUND;
         return RC_FAIL;
     }
 
@@ -7064,7 +7062,7 @@ long    _lNextIndex(SATvm *pstSavm, RunTime *pstRun, TABLE t, void **ppvOAddr)
     pstTruck = (PSHTruck)pGetNode(pvAddr, pstTree->m_lData);
     if(RC_MISMA == lFeildMatch(&pstSavm->stCond, pstTruck->m_pvData, pstRun->pstVoid))
     {
-        pstSavm->m_lErrno = SVR_EXCEPTION;
+        pstSavm->m_lErrno = NO_DATA_FOUND;
         return RC_FAIL;
     }
 
@@ -7394,7 +7392,7 @@ long   __lIndexUpdate(SATvm *pstSavm, void *pvAddr, TABLE t, SHTruck *pstTruck, 
         pstSavm                    --stvm handle
         pstAddr                    --table handle
         t                          --table 
-        pvUpdate                   --update date
+        pvUpdate                   --update data
     return:
         RC_SUCC                    --success
         RC_FAIL                    --failure
@@ -7448,14 +7446,13 @@ long    _lUpdateIndex(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
     if(RC_MISMA == lFeildMatch(&pstSavm->stCond, pstTruck->m_pvData, pstSavm->pstVoid))
     {
         pthread_rwlock_unlock(prwLock);    
-        pstSavm->m_lErrno = SVR_EXCEPTION;
+        pstSavm->m_lErrno = NO_DATA_FOUND;
         TFree(pvData);
         return RC_FAIL;
     }
 
-    memcpy(pvData, pvUpdate, lGetRowSize(pstSavm->tblName));
-    memcpy(pvUpdate, pstTruck->m_pvData, lGetRowSize(pstSavm->tblName));
-    if(RC_FAIL == lMergeTruck(pstSavm, &pstSavm->stUpdt, pvData, pvUpdate))
+    memcpy(pvData, pstTruck->m_pvData, lGetRowSize(pstSavm->tblName));
+    if(RC_FAIL == lMergeTruck(pstSavm, &pstSavm->stUpdt, pvUpdate, pvData))
     {
         pthread_rwlock_unlock(prwLock);    
         TFree(pvData);
@@ -7463,7 +7460,7 @@ long    _lUpdateIndex(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
     }
 
     memset(szIdx, 0, sizeof(szIdx));
-    if(NULL == pPickIndex(lGetIdxNum(t), pGetTblIdx(t), pvUpdate, szIdx))
+    if(NULL == pPickIndex(lGetIdxNum(t), pGetTblIdx(t), pvData, szIdx))
     {
         pthread_rwlock_unlock(prwLock);    
         pstSavm->m_lErrno = IDX_FIELD_NIL;
@@ -7471,7 +7468,7 @@ long    _lUpdateIndex(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
         return RC_FAIL;
     }
 
-    pstSavm->pstVoid = pvUpdate;
+    pstSavm->pstVoid = pvData;
     pstTruck->m_lTimes ++;
     SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NULL);
     if(!memcmp(szIdx, szOld, MAX_INDEX_LEN))
@@ -7532,7 +7529,7 @@ long    _lUpdateIndex(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
         return RC_FAIL;
     }
 
-    memcpy(pstTruck->m_pvData, pvUpdate, lGetRowSize(t));
+    memcpy(pstTruck->m_pvData, pvData, lGetRowSize(t));
     pthread_rwlock_unlock(prwLock);    
     pstSavm->m_lEffect = 1;
 
@@ -7546,7 +7543,7 @@ long    _lUpdateIndex(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
         pstSavm                    --stvm handle
         pstAddr                    --table handle
         t                          --table 
-        pvUpdate                   --update date
+        pvUpdate                   --update data
     return:
         RC_SUCC                    --success
         RC_FAIL                    --failure
@@ -7581,13 +7578,13 @@ long    _lUpdateGroup(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
     if(NULL == (pstRoot = (SHTree *)pGetNode(pvAddr, ((TblDef *)pvAddr)->m_lGroupRoot)))
     {
         pstSavm->m_lErrno = SVR_EXCEPTION;
-        goto GROUP_ERROR;
+        goto REPGROUP_ERROR;
     }
 
     if(NULL == (pstTree = pSearchTree(pvAddr, pstRoot, szOld, lGetGrpLen(t))))
     {
         pstSavm->m_lErrno = NO_DATA_FOUND;
-        goto GROUP_ERROR;
+        goto REPGROUP_ERROR;
     }
 
     pstSavm->m_lEffect = 0;
@@ -7606,13 +7603,13 @@ long    _lUpdateGroup(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
 
         memcpy(pvData, pstTruck->m_pvData, lGetRowSize(t)); 
         if(RC_FAIL == lMergeTruck(pstSavm, &pstSavm->stUpdt, pvUpdate, pvData))
-            goto GROUP_ERROR;
+            goto REPGROUP_ERROR;
 
         memset(szIdx, 0, sizeof(szIdx));
         if(NULL == pPickIndex(lGetGrpNum(t), pGetTblGrp(t), pvData, szIdx))
         {
             pstSavm->m_lErrno = IDX_FIELD_NIL;
-            goto GROUP_ERROR;
+            goto REPGROUP_ERROR;
         }
 
         pstSavm->m_lEffect ++;
@@ -7623,7 +7620,7 @@ long    _lUpdateGroup(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
             if(RC_SUCC != __lIndexUpdate(pstSavm, pvAddr, t, pstTruck, pstList->m_lData))
             {
                 SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
-                goto GROUP_ERROR;
+                goto REPGROUP_ERROR;
             }
         }
 
@@ -7636,7 +7633,7 @@ long    _lUpdateGroup(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
                 ((TblDef *)pvAddr)->m_lValid ++;
                 pstSavm->m_lErrno = SVR_EXCEPTION;
                 SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
-                goto GROUP_ERROR;
+                goto REPGROUP_ERROR;
             }
 
             if(SELF_POS_UNUSE == pstTree->m_lData)
@@ -7648,7 +7645,7 @@ long    _lUpdateGroup(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
             if(NULL == (pstRoot = pInsertGroup(pstSavm, pstRoot, szIdx, lGetGrpLen(t), &pstTruck)))
             {
                 SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
-                goto GROUP_ERROR;
+                goto REPGROUP_ERROR;
             }
 
             ((TblDef *)pvAddr)->m_lValid ++;
@@ -7656,7 +7653,7 @@ long    _lUpdateGroup(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
         }
 
         if(RC_SUCC != lRecordWork(pstSavm, pstTruck->m_pvData, OPERATE_UPDATE)) 
-            goto GROUP_ERROR;
+            goto REPGROUP_ERROR;
 
         memcpy(pstTruck->m_pvData, pvData, lGetRowSize(t));
         SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
@@ -7674,7 +7671,7 @@ long    _lUpdateGroup(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
 
     return RC_SUCC;
 
-GROUP_ERROR:
+REPGROUP_ERROR:
     pthread_rwlock_unlock(prwLock);
     TFree(pvData);
     return RC_FAIL;
@@ -7686,7 +7683,7 @@ GROUP_ERROR:
         pstSavm                    --stvm handle
         pstAddr                    --table handle
         t                          --table 
-        pvUpdate                   --update date
+        pvUpdate                   --update data
     return:
         RC_SUCC                    --success
         RC_FAIL                    --failure
@@ -7743,13 +7740,13 @@ long    _lUpdateHash(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
 
         memcpy(pvData, pstTruck->m_pvData, lGetRowSize(t)); 
         if(RC_FAIL == lMergeTruck(pstSavm, &pstSavm->stUpdt, pvUpdate, pvData))
-            goto HASH_ERROR;
+            goto REPHASH_ERROR;
 
         memset(szIdx, 0, sizeof(szIdx));
         if(NULL == pPickIndex(lGetGrpNum(t), pGetTblGrp(t), pvData, szIdx))
         {
             pstSavm->m_lErrno = IDX_FIELD_NIL;
-            goto HASH_ERROR;
+            goto REPHASH_ERROR;
         }
 
         pstSavm->m_lEffect ++;
@@ -7761,7 +7758,7 @@ long    _lUpdateHash(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
             if(RC_SUCC != __lIndexUpdate(pstSavm, pvAddr, t, pstTruck, pstList->m_lData))
             {
                 SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NULL);
-                goto HASH_ERROR;
+                goto REPHASH_ERROR;
             }
         }
 
@@ -7775,7 +7772,7 @@ long    _lUpdateHash(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
                 ((TblDef *)pvAddr)->m_lValid ++;
                 pstSavm->m_lErrno = SVR_EXCEPTION;
                 SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
-                goto HASH_ERROR;
+                goto REPHASH_ERROR;
             }
 
             lOffset = ((TblDef *)pvAddr)->m_lGroupPos + lIdx * sizeof(SHTree);
@@ -7783,20 +7780,20 @@ long    _lUpdateHash(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
             {
                 pstSavm->m_lErrno = SVR_EXCEPTION;
                 SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
-                goto HASH_ERROR;
+                goto REPHASH_ERROR;
             }
 
             if(RC_SUCC != __lInsertHash(pstSavm, pvAddr, t, pstTree, lOffset, &pstTruck))
             {
                 pstSavm->m_lErrno = SVR_EXCEPTION;
                 SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
-                goto HASH_ERROR;
+                goto REPHASH_ERROR;
             }
 
             ((TblDef *)pvAddr)->m_lValid ++;
         }
         if(RC_SUCC != lRecordWork(pstSavm, pstTruck->m_pvData, OPERATE_UPDATE)) 
-            goto HASH_ERROR;
+            goto REPHASH_ERROR;
 
         memcpy(pstTruck->m_pvData, pvData, lGetRowSize(t));
         SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
@@ -7814,7 +7811,7 @@ long    _lUpdateHash(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
 
     return RC_SUCC;
 
-HASH_ERROR:
+REPHASH_ERROR:
     pthread_rwlock_unlock(prwLock);
     TFree(pvData);
     return RC_FAIL;
@@ -7826,7 +7823,7 @@ HASH_ERROR:
         pstSavm                    --stvm handle
         pstAddr                    --table handle
         t                          --table 
-        pvUpdate                   --update date
+        pvUpdate                   --update data
     return:
         RC_SUCC                    --success
         RC_FAIL                    --failure
@@ -7924,7 +7921,7 @@ TRUCK_ERROR:
     description：API - Update
     parameters:
         pstSavm                    --stvm handle
-        pvUpdate                   --update date
+        pvUpdate                   --update data
     return:
         RC_SUCC                    --success
         RC_FAIL                    --failure
@@ -8742,7 +8739,7 @@ long    _lExportContext(FILE *fp, char *s, long lIdx, TblKey *pstIdx, char *f)
             }
             break;
         case FIELD_CHAR:
-            fprintf(fp, "%.*s", pstIdx[i].m_lLen, s + pstIdx[i].m_lFrom);
+            fprintf(fp, "%.*s", (int)pstIdx[i].m_lLen, s + pstIdx[i].m_lFrom);
             break;
         default:
             fprintf(stderr, "Export field attribute exception\n");
@@ -9737,7 +9734,7 @@ long    _lClickIndex(SATvm *pstSavm, void *pvAddr, TABLE t, ulong *puHits)
     if(RC_MISMA == lFeildMatch(&pstSavm->stCond, pstTruck->m_pvData, pstSavm->pstVoid))
     {
         pthread_rwlock_unlock(prwLock);
-        pstSavm->m_lErrno = SVR_EXCEPTION;
+        pstSavm->m_lErrno = NO_DATA_FOUND;
         return RC_FAIL;
     }
 
@@ -10017,6 +10014,631 @@ long    lClick(SATvm *pstSavm, ulong *puHits)
 }
 
 /*************************************************************************************************
+    description：Select the table data according to the Unique index
+    parameters:
+        pstSavm                    --stvm handle
+        pvAddr                     --memory address
+        t                          --table
+        psvOut                     --result data
+        plData                     --offset 
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    _lReplaceIndex(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
+{
+    size_t  lData;
+    long    lRet = RC_SUCC;
+    void    *pvData = NULL;
+    SHTruck *pstTruck = NULL;
+    SHTree  *pstRoot, *pstTree = NULL;
+    RWLock  *prwLock = (RWLock *)pGetRWLock(pvAddr);
+    char    szOld[MAX_INDEX_LEN], szIdx[MAX_INDEX_LEN];
+
+    memset(szOld, 0, sizeof(szOld));
+    if(NULL == pGetIndex(&pstSavm->stCond, lGetIdxNum(t), pGetTblIdx(t), pstSavm->pstVoid, szOld))
+        return RC_CONTU;
+
+    if(NULL == (pvData = (void *)malloc(lGetRowSize(pstSavm->tblName))))
+    {
+        pstSavm->m_lErrno = MALLC_MEM_ERR;
+        return RC_FAIL;
+    }
+
+    if(RC_SUCC != pthread_rwlock_wrlock(prwLock)) 
+    {
+        pstSavm->m_lErrno = LOCK_DOWR_ERR;
+        TFree(pvData);
+        return RC_FAIL;
+    }
+
+    pstSavm->m_lEType = EXE_PLAN_IDX;
+    if(NULL == (pstRoot = (SHTree *)pGetNode(pvAddr, ((TblDef *)pvAddr)->m_lTreeRoot)))
+    {
+        pthread_rwlock_unlock(prwLock);    
+        pstSavm->m_lErrno = SVR_EXCEPTION;
+        TFree(pvData);
+        return RC_FAIL;
+    }
+
+    if(NULL == (pstTree = (SHTree *)pSearchTree(pvAddr, pstRoot, szOld, lGetIdxLen(t))))
+    {
+        // If don't find it, so insert
+        pstSavm->pstVoid = pvUpdate;
+        lRet = __lInsert(pstSavm, pvAddr, t, 0);
+        pthread_rwlock_unlock(prwLock);    
+        TFree(pvData);
+        return lRet;
+    }
+
+    lData = pstTree->m_lData;
+    pstTruck = (PSHTruck)pGetNode(pvAddr, pstTree->m_lData);
+    if(RC_MISMA == lFeildMatch(&pstSavm->stCond, pstTruck->m_pvData, pstSavm->pstVoid))
+    {
+        pthread_rwlock_unlock(prwLock);    
+        //  The uniq index is same, and the new data must trigger the index repetition.
+        pstSavm->m_lErrno = UNIQ_IDX_REPT;
+        TFree(pvData);
+        return RC_FAIL;
+    }
+
+    memcpy(pvData, pstTruck->m_pvData, lGetRowSize(pstSavm->tblName));
+    if(RC_FAIL == lMergeTruck(pstSavm, &pstSavm->stUpdt, pvUpdate, pvData))
+    {
+        pthread_rwlock_unlock(prwLock);    
+        TFree(pvData);
+        return RC_FAIL;
+    }
+
+    memset(szIdx, 0, sizeof(szIdx));
+    if(NULL == pPickIndex(lGetIdxNum(t), pGetTblIdx(t), pvData, szIdx))
+    {
+        pthread_rwlock_unlock(prwLock);    
+        pstSavm->m_lErrno = IDX_FIELD_NIL;
+        TFree(pvData);
+        return RC_FAIL;
+    }
+
+    pstSavm->pstVoid = pvData;
+    pstTruck->m_lTimes ++;
+    SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NULL);
+    if(!memcmp(szIdx, szOld, MAX_INDEX_LEN))
+    {
+        if(HAVE_NORL_IDX(t))
+            lRet = __lUpdateGroup(pstSavm, pvAddr, t, pstTruck, lData);
+        else if(HAVE_HASH_IDX(t))            
+            lRet = __lUpdateHash(pstSavm, pvAddr, t, pstTruck, lData);
+    }
+    else
+    {
+        if(NULL != (SHTree *)pSearchTree(pvAddr, pstRoot, szIdx, lGetIdxLen(t)))
+        {
+            SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
+            pthread_rwlock_unlock(prwLock);    
+            pstSavm->m_lErrno = UNIQ_IDX_REPT;
+            TFree(pvData);
+            return RC_FAIL;
+        }
+
+        if(NULL == (pstRoot = _pDeleteTree(pvAddr, pstSavm->tblName, pstRoot, pstTree)))
+        {
+            SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
+            pthread_rwlock_unlock(prwLock);    
+            pstSavm->m_lErrno = SVR_EXCEPTION;
+            TFree(pvData);
+            return RC_FAIL;
+        }
+        
+        ((TblDef *)pvAddr)->m_lValid --;
+        if(NULL == (pstRoot = pInsertTree(pstSavm, pstRoot, szIdx, lGetIdxLen(t), &pstTruck)))
+        {
+            SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
+            pthread_rwlock_unlock(prwLock);    
+            TFree(pvData);
+            return RC_FAIL;
+        }
+
+        ((TblDef *)pvAddr)->m_lValid ++;
+        ((TblDef *)pvAddr)->m_lTreeRoot = pstRoot->m_lSePos;
+        if(HAVE_NORL_IDX(t))
+            lRet = __lUpdateGroup(pstSavm, pvAddr, t, pstTruck, lData);
+        else if(HAVE_HASH_IDX(t))
+            lRet = __lUpdateHash(pstSavm, pvAddr, t, pstTruck, lData);
+    }
+    SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
+    if(RC_SUCC != lRet)
+    {
+        pthread_rwlock_unlock(prwLock);    
+        TFree(pvData);
+        return RC_FAIL;
+    }
+
+    if(RC_SUCC != lRecordWork(pstSavm, pstTruck->m_pvData, OPERATE_UPDATE))
+    {
+        pthread_rwlock_unlock(prwLock);    
+        TFree(pvData);
+        return RC_FAIL;
+    }
+
+    memcpy(pstTruck->m_pvData, pvData, lGetRowSize(t));
+    pthread_rwlock_unlock(prwLock);    
+    pstSavm->m_lEffect = 1;
+
+    TFree(pvData);
+    return RC_SUCC;
+}
+
+/*************************************************************************************************
+    description：Update record index
+    parameters:
+        pstSavm                    --stvm handle
+        pstAddr                    --table handle
+        t                          --table 
+        pvUpdate                   --update data
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    _lReplaceGroup(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
+{
+    SHList  *pstList = NULL;
+    SHTruck *pstTruck = NULL;
+    size_t  lOffset, lNext;
+    SHTree  *pstTree, *pstRoot;
+    void    *pvData,  *pvCond = NULL;
+    RWLock  *prwLock = (RWLock *)pGetRWLock(pvAddr);
+    char    szOld[MAX_INDEX_LEN], szIdx[MAX_INDEX_LEN];
+
+    memset(szOld, 0, sizeof(szOld));
+    if(NULL == pGetIndex(&pstSavm->stCond, lGetGrpNum(t), pGetTblGrp(t), pstSavm->pstVoid, szOld))
+        return RC_CONTU;
+
+    if(NULL == (pvData = (void *)malloc(lGetRowSize(t))))
+    {
+        pstSavm->m_lErrno = MALLC_MEM_ERR;
+        return RC_FAIL;
+    }
+
+    if(RC_SUCC != pthread_rwlock_wrlock(prwLock))
+    {
+        pstSavm->m_lErrno = LOCK_DOWR_ERR;
+        TFree(pvData);
+        return RC_FAIL;
+    }
+
+    if(NULL == (pstRoot = (SHTree *)pGetNode(pvAddr, ((TblDef *)pvAddr)->m_lGroupRoot)))
+    {
+        pstSavm->m_lErrno = SVR_EXCEPTION;
+        goto GROUP_ERROR;
+    }
+
+    if(NULL == (pstTree = pSearchTree(pvAddr, pstRoot, szOld, lGetGrpLen(t))))
+    {
+        TFree(pvData);
+        // If don't find it, then insert
+        pstSavm->pstVoid = pvUpdate;
+        lNext = __lInsert(pstSavm, pvAddr, t, 0);
+        pthread_rwlock_unlock(prwLock);
+        return lNext;
+    }
+
+    pstSavm->m_lEffect = 0;
+    pvCond = pstSavm->pstVoid;
+    pstSavm->m_lEType = EXE_PLAN_GRP;
+    for(pstList = (SHList *)pGetNode(pvAddr, pstTree->m_lData); SELF_POS_UNUSE != pstList->m_lPos;
+        pstList = (SHList *)pGetNode(pvAddr, lNext))
+    {
+        lNext = pstList->m_lNext;
+        pstTruck = (PSHTruck)pGetNode(pvAddr, pstList->m_lData);
+        if(RC_MISMA == lFeildMatch(&pstSavm->stCond, pstTruck->m_pvData, pvCond))
+        {
+            if(SELF_POS_UNUSE == pstList->m_lNext)    break;
+            continue;
+        }
+
+        memcpy(pvData, pstTruck->m_pvData, lGetRowSize(t)); 
+        if(RC_FAIL == lMergeTruck(pstSavm, &pstSavm->stUpdt, pvUpdate, pvData))
+            goto GROUP_ERROR;
+
+        memset(szIdx, 0, sizeof(szIdx));
+        if(NULL == pPickIndex(lGetGrpNum(t), pGetTblGrp(t), pvData, szIdx))
+        {
+            pstSavm->m_lErrno = IDX_FIELD_NIL;
+            goto GROUP_ERROR;
+        }
+
+        pstSavm->m_lEffect ++;
+        pstSavm->pstVoid = pvData;
+        SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NULL);
+        if(HAVE_UNIQ_IDX(t))
+        {
+            if(RC_SUCC != __lIndexUpdate(pstSavm, pvAddr, t, pstTruck, pstList->m_lData))
+            {
+                SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
+                goto GROUP_ERROR;
+            }
+        }
+
+        if(memcmp(szIdx, szOld, MAX_INDEX_LEN))
+        {
+            -- ((TblDef *)pvAddr)->m_lValid;
+            lOffset = lGetListOfs(t) + ((TblDef *)pvAddr)->m_lValid * sizeof(SHList);
+            if(RC_SUCC != lReleaseList(pvAddr, t, pstTree, pstList, lOffset, &lNext))
+            {
+                ((TblDef *)pvAddr)->m_lValid ++;
+                pstSavm->m_lErrno = SVR_EXCEPTION;
+                SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
+                goto GROUP_ERROR;
+            }
+
+            if(SELF_POS_UNUSE == pstTree->m_lData)
+            {
+                pstRoot = _pDeleteGroup(pvAddr, t, pstRoot, pstTree, &pstSavm->m_lEffect);
+                ((TblDef *)pvAddr)->m_lGroupRoot = pstRoot->m_lSePos;
+            }
+
+            if(NULL == (pstRoot = pInsertGroup(pstSavm, pstRoot, szIdx, lGetGrpLen(t), &pstTruck)))
+            {
+                SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
+                goto GROUP_ERROR;
+            }
+
+            ((TblDef *)pvAddr)->m_lValid ++;
+            ((TblDef *)pvAddr)->m_lGroupRoot = pstRoot->m_lSePos;
+        }
+
+        if(RC_SUCC != lRecordWork(pstSavm, pstTruck->m_pvData, OPERATE_UPDATE)) 
+            goto GROUP_ERROR;
+
+        memcpy(pstTruck->m_pvData, pvData, lGetRowSize(t));
+        SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
+
+        if(FIRST_ROW & pstSavm->lFind)    break;
+    }
+
+    if(0 == pstSavm->m_lEffect)
+    {
+        // If don't find it, then insert
+        pstSavm->pstVoid = pvUpdate;
+        lNext = __lInsert(pstSavm, pvAddr, t, 0);
+        pthread_rwlock_unlock(prwLock);    
+        TFree(pvData);
+        return lNext;
+    }
+
+    pthread_rwlock_unlock(prwLock);
+    TFree(pvData);
+    return RC_SUCC;
+
+GROUP_ERROR:
+    pthread_rwlock_unlock(prwLock);
+    TFree(pvData);
+    return RC_FAIL;
+}
+
+/*************************************************************************************************
+    description：Update record hash index
+    parameters:
+        pstSavm                    --stvm handle
+        pstAddr                    --table handle
+        t                          --table 
+        pvUpdate                   --update data
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    _lReplaceHash(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
+{
+    SHList  *pstList = NULL;
+    SHTruck *pstTruck = NULL;
+    SHTree  *pstTree, *pstHash;
+    void    *pvData = NULL, *pvCond;
+    size_t  lOld, lIdx, lOffset, lNext;
+    RWLock  *prwLock = (RWLock *)pGetRWLock(pvAddr);
+    char    szOld[MAX_INDEX_LEN], szIdx[MAX_INDEX_LEN];
+
+    memset(szOld, 0, sizeof(szOld));
+    if(NULL == pGetIndex(&pstSavm->stCond, lGetGrpNum(t), pGetTblGrp(t), pstSavm->pstVoid, szOld))
+        return RC_CONTU;
+
+    if(NULL == (pvData = (void *)malloc(lGetRowSize(t))))
+    {
+        pstSavm->m_lErrno = MALLC_MEM_ERR;
+        return RC_FAIL;
+    }
+
+    lOld = uGetHash(szOld, lGetGrpLen(t)) % ((TblDef *)pvAddr)->m_lMaxRow;
+    lOffset = ((TblDef *)pvAddr)->m_lGroupPos + lOld * sizeof(SHTree);
+
+    if(RC_SUCC != pthread_rwlock_wrlock(prwLock))
+    {
+        pstSavm->m_lErrno = LOCK_DOWR_ERR;
+        TFree(pvData);
+        return RC_FAIL;
+    }
+
+    if(NULL == (pstHash = (SHTree *)(pvAddr + lOffset)))
+    {
+        // If don't find it, then insert
+        pstSavm->pstVoid = pvUpdate;
+        lNext =  __lInsert(pstSavm, pvAddr, t, 0);
+        pthread_rwlock_unlock(prwLock);    
+        TFree(pvData);
+        return lNext;
+    }
+
+    pstSavm->m_lEffect = 0;
+    pvCond = pstSavm->pstVoid;
+    pstSavm->m_lEType = EXE_PLAN_GRP;
+    for(pstList = (SHList *)pGetNode(pvAddr, pstHash->m_lData); SELF_POS_UNUSE != pstList->m_lPos; 
+        pstList = (SHList *)pGetNode(pvAddr, lNext))
+    {
+        lNext = pstList->m_lNext;
+        pstTruck = (PSHTruck)pGetNode(pvAddr, pstList->m_lData);
+        if(RC_MISMA == lFeildMatch(&pstSavm->stCond, pstTruck->m_pvData, pvCond))
+        {
+            if(SELF_POS_UNUSE == pstList->m_lNext)    break;
+            continue;
+        }
+
+        memcpy(pvData, pstTruck->m_pvData, lGetRowSize(t)); 
+        if(RC_FAIL == lMergeTruck(pstSavm, &pstSavm->stUpdt, pvUpdate, pvData))
+            goto HASH_ERROR;
+
+        memset(szIdx, 0, sizeof(szIdx));
+        if(NULL == pPickIndex(lGetGrpNum(t), pGetTblGrp(t), pvData, szIdx))
+        {
+            pstSavm->m_lErrno = IDX_FIELD_NIL;
+            goto HASH_ERROR;
+        }
+
+        pstSavm->m_lEffect ++;
+        pstSavm->pstVoid = pvData;
+        lIdx = uGetHash(szIdx, lGetGrpLen(t)) % ((TblDef *)pvAddr)->m_lMaxRow;
+        SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NULL);
+        if(HAVE_UNIQ_IDX(t))
+        {
+            if(RC_SUCC != __lIndexUpdate(pstSavm, pvAddr, t, pstTruck, pstList->m_lData))
+            {
+                SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NULL);
+                goto HASH_ERROR;
+            }
+        }
+
+        // Index does not match, rebuild inde
+        if(lOld != lIdx)
+        {
+            -- ((TblDef *)pvAddr)->m_lValid;
+            lOffset = lGetListOfs(t) + ((TblDef *)pvAddr)->m_lValid * sizeof(SHList);
+            if(RC_SUCC != lReleaseList(pvAddr, t, pstHash, pstList, lOffset, &lNext))
+            {
+                ((TblDef *)pvAddr)->m_lValid ++;
+                pstSavm->m_lErrno = SVR_EXCEPTION;
+                SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
+                goto HASH_ERROR;
+            }
+
+            lOffset = ((TblDef *)pvAddr)->m_lGroupPos + lIdx * sizeof(SHTree);
+            if(NULL == (pstTree = (SHTree *)(pvAddr + lOffset)))
+            {
+                pstSavm->m_lErrno = SVR_EXCEPTION;
+                SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
+                goto HASH_ERROR;
+            }
+
+            if(RC_SUCC != __lInsertHash(pstSavm, pvAddr, t, pstTree, lOffset, &pstTruck))
+            {
+                pstSavm->m_lErrno = SVR_EXCEPTION;
+                SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
+                goto HASH_ERROR;
+            }
+
+            ((TblDef *)pvAddr)->m_lValid ++;
+        }
+        if(RC_SUCC != lRecordWork(pstSavm, pstTruck->m_pvData, OPERATE_UPDATE)) 
+            goto HASH_ERROR;
+
+        memcpy(pstTruck->m_pvData, pvData, lGetRowSize(t));
+        SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
+
+        if(FIRST_ROW & pstSavm->lFind)    break;
+    }
+
+    if(0 == pstSavm->m_lEffect)
+    {
+        // If don't find it, then insert
+        pstSavm->pstVoid = pvUpdate;
+        lNext = __lInsert(pstSavm, pvAddr, t, 0);
+        pthread_rwlock_unlock(prwLock);    
+        TFree(pvData);
+        return lNext;
+    }
+
+    pthread_rwlock_unlock(prwLock);
+    TFree(pvData);
+    return RC_SUCC;
+
+HASH_ERROR:
+    pthread_rwlock_unlock(prwLock);
+    TFree(pvData);
+    return RC_FAIL;
+}
+
+/*************************************************************************************************
+    description：Update record truck 
+    parameters:
+        pstSavm                    --stvm handle
+        pstAddr                    --table handle
+        t                          --table 
+        pvUpdate                   --update data
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    _lTruckReplace(SATvm *pstSavm, void *pvAddr, TABLE t, void *pvUpdate)
+{
+    long    lRet = RC_SUCC;
+    SHTruck *pstTruck = NULL;
+    void    *pvData = NULL, *pvCond;
+    size_t  lRow, lOffset = lGetTblData(t);
+    RWLock  *prwLock = (RWLock *)pGetRWLock(pvAddr);
+
+    if(NULL == (pvData = (void *)malloc(lGetRowSize(t))))
+    {
+        pstSavm->m_lErrno = MALLC_MEM_ERR;
+        return RC_FAIL;
+    }
+
+    if(RC_SUCC != pthread_rwlock_wrlock(prwLock))
+    {
+        pstSavm->m_lErrno = LOCK_DOWR_ERR;
+        TFree(pvData);
+        return RC_FAIL;
+    }
+
+    pstSavm->m_lEffect = 0;
+    pvCond = pstSavm->pstVoid;
+    pstSavm->m_lEType = EXE_PLAN_ALL;
+    pstTruck = (PSHTruck)pGetNode(pvAddr, lOffset);
+    for(lRow = 0; (lRow < ((TblDef *)pvAddr)->m_lValid) && (lOffset < lGetTableSize(t));
+        pstTruck = (PSHTruck)pGetNode(pvAddr, lOffset))
+    {
+        if(IS_TRUCK_NULL(pstTruck))
+        {
+            lOffset += lGetRowTruck(t);
+            continue;
+        }
+
+        lRow ++;
+        if(RC_MISMA == lFeildMatch(&pstSavm->stCond, pstTruck->m_pvData, pvCond))
+        {
+            lOffset += lGetRowTruck(t);
+            continue;
+        }
+
+        memcpy(pvData, pstTruck->m_pvData, lGetRowSize(t)); 
+        if(RC_FAIL == lMergeTruck(pstSavm, &pstSavm->stUpdt, pvUpdate, pvData))
+            goto REPLACE_ERROR;
+
+        pstSavm->m_lEffect ++;
+        pstSavm->pstVoid = pvData;
+        SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NULL);
+        if(HAVE_UNIQ_IDX(t))
+        {
+            if(RC_SUCC != __lIndexUpdate(pstSavm, pvAddr, t, pstTruck, lOffset))
+            {
+                SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
+                goto REPLACE_ERROR;
+            }
+        }
+ 
+        if(HAVE_NORL_IDX(t))
+            lRet = __lUpdateGroup(pstSavm, pvAddr, t, pstTruck, lOffset);
+        else if(HAVE_HASH_IDX(t))
+            lRet = __lUpdateHash(pstSavm, pvAddr, t, pstTruck, lOffset);
+        SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NRML);
+        if(RC_SUCC != lRet)
+            goto REPLACE_ERROR;
+
+        if(RC_SUCC != lRecordWork(pstSavm, pstTruck->m_pvData, OPERATE_UPDATE)) 
+            goto REPLACE_ERROR;
+
+        memcpy(pstTruck->m_pvData, pvData, lGetRowSize(t));
+        if(FIRST_ROW & pstSavm->lFind)    break;
+        lOffset += lGetRowTruck(t);
+    }
+
+    if(0 == pstSavm->m_lEffect)
+    {
+        // If don't find it, so insert
+        pstSavm->pstVoid = pvUpdate;
+        lRet = __lInsert(pstSavm, pvAddr, t, 0);
+        pthread_rwlock_unlock(prwLock);    
+        TFree(pvData);
+        return lRet;
+    }
+
+    pthread_rwlock_unlock(prwLock);
+    TFree(pvData);
+    return RC_SUCC;
+
+REPLACE_ERROR:
+    pthread_rwlock_unlock(prwLock);
+    TFree(pvData);
+    return RC_FAIL;
+}
+
+/*************************************************************************************************
+    description：API - lReplace
+    parameters:
+        pstSavm                    --stvm handle
+        pvReplace                  --replace data
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    lReplace(SATvm *pstSavm, void *pvReplace)
+{
+    long    lRet;
+    void    *pvData;
+    RunTime *pstRun = NULL;
+
+    if(!pstSavm || !pstSavm->pstVoid)
+    {
+        pstSavm->m_lErrno = CONDIT_IS_NIL;
+        return RC_FAIL;
+    }
+
+    pvData = pstSavm->pstVoid;
+    if(NULL == (pstRun = (RunTime *)pInitMemTable(pstSavm, pstSavm->tblName)))
+        return RC_FAIL;
+
+    if(RES_REMOT_SID == pstRun->m_lLocal)
+    {
+        Tremohold(pstSavm, pstRun);
+        return RC_FAIL;
+//        return _lReplaceByRt(pstSavm, psvOut);
+    }
+
+    if(HAVE_UNIQ_IDX(pstSavm->tblName))
+    {
+        lRet = _lReplaceIndex(pstSavm, pstRun->m_pvAddr, pstSavm->tblName, pvReplace);
+        if(RC_CONTU != lRet)
+        {
+            vTblDisconnect(pstSavm, pstSavm->tblName);
+            pstSavm->pstVoid = pvData;
+            return lRet;
+        }
+    }
+
+    if(HAVE_NORL_IDX(pstSavm->tblName))
+    {
+        lRet = _lReplaceGroup(pstSavm, pstRun->m_pvAddr, pstSavm->tblName, pvReplace);
+        if(RC_CONTU != lRet)
+        {
+            vTblDisconnect(pstSavm, pstSavm->tblName);
+            pstSavm->pstVoid = pvData;
+            return lRet;
+        }
+    }
+    else if(HAVE_HASH_IDX(pstSavm->tblName))
+    {
+        lRet = _lReplaceHash(pstSavm, pstRun->m_pvAddr, pstSavm->tblName, pvReplace);
+        if(RC_CONTU != lRet)
+        {
+            vTblDisconnect(pstSavm, pstSavm->tblName);
+            pstSavm->pstVoid = pvData;
+            return lRet;
+        }
+    }
+
+    lRet = _lTruckReplace(pstSavm, pstRun->m_pvAddr, pstSavm->tblName, pvReplace);
+    vTblDisconnect(pstSavm, pstSavm->tblName);
+    pstSavm->pstVoid = pvData;
+    return lRet;
+}
+
+/*************************************************************************************************
     description：dump the table data
     parameters:
         pstSavm                    --stvm handle
@@ -10031,7 +10653,7 @@ long    lDumpTable(SATvm *pstSavm, TABLE t)
     char    szFile[512];
     RunTime *pstRun = NULL;
     SHTruck *pstTruck = NULL;
-    long    lRow = 0, lOffset;
+    size_t  lRow = 0, lOffset;
 
     if(!pstSavm)
     {

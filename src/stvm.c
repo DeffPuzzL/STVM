@@ -33,7 +33,7 @@
 /*************************************************************************************************
    function
  *************************************************************************************************/
-Benum  elog  =  0;
+TCustom         g_stCustom;
 extern char     **environ;
 extern long     lShutdownTvm();
 extern void     vSetNode(char *s);
@@ -46,7 +46,7 @@ extern long     lMountTable(SATvm *pstSavm, char *pszFile);
     return:
         RC_SUCC                    --success
         RC_FAIL                    --failure
-  *************************************************************************************************/
+ *************************************************************************************************/
 static  char*   sGetTVMVers()
 {
     struct  utsname sinf;
@@ -110,7 +110,7 @@ void    vSCRDebug(const char *fmt, ...)
     char    szMsg[1024];
     va_list ap;
 
-    if(0 == elog)    return ;
+    if(0 == g_stCustom.m_eDebug)    return ;
 
     memset(szMsg, 0, sizeof(szMsg));
     va_start(ap, fmt);
@@ -1183,32 +1183,32 @@ SQLFld*    pSortSQLField(SQLFld *pstRoot)
   *************************************************************************************************/
 long    lShowTables(SATvm *pstSavm)
 {
-	char	szTable[128];
+    char    szTable[128];
     TIndex  stIndex, *pstIndex = NULL;
     long    i, lRows = 0, lTime = lGetTiskTime();
    
     if(RC_SUCC != lInitSATvm(pstSavm, SYS_TVM_INDEX))
         return RC_FAIL;
 
-	conditinit(pstSavm, stIndex, SYS_TVM_INDEX);
+    conditinit(pstSavm, stIndex, SYS_TVM_INDEX);
     conditnum(pstSavm, stIndex, m_lLocal, RES_LOCAL_SID); 
 
     if(RC_SUCC != lQuery(pstSavm, &lRows, (void **)&pstIndex))
         return RC_FAIL;
 
     fprintf(stdout, "table table_name\n");
-	for(i = 0; i < lRows; i ++)
-	{
-		memset(szTable, 0, sizeof(szTable));
-		if(!strcmp(pstIndex[i].m_szPart, pstIndex[i].m_szOwner))
+    for(i = 0; i < lRows; i ++)
+    {
+        memset(szTable, 0, sizeof(szTable));
+        if(!strcmp(pstIndex[i].m_szPart, pstIndex[i].m_szOwner))
             strcpy(szTable, pstIndex[i].m_szTable);
-		else
+        else
             snprintf(szTable, sizeof(szTable), "%s@%s", pstIndex[i].m_szPart, pstIndex[i].m_szTable);
         fprintf(stdout, "%3d   %s\n", pstIndex[i].m_table, szTable);
-	}
+    }
 
     lTime -= lGetTiskTime();
-	TFree(pstIndex);
+    TFree(pstIndex);
     fprintf(stdout, "---(%ld) records selected, ep(%d), %s---\n", pstSavm->m_lEffect, 
         pstSavm->m_lEType, sGetCostTime(-1 * lTime));
     return RC_SUCC;
@@ -1263,7 +1263,7 @@ void    vPrintAmount(int t, char *pszTable, int nValid, int nMax)
 void    vTableAmount()
 {
     size_t  i, lOut = 0;
-	char	szTable[128];
+    char    szTable[128];
     RunTime *pstRun = NULL;
     TIndex  stIndex, *pstIndex = NULL;
     SATvm   *pstSavm = (SATvm *)pGetSATvm();
@@ -1292,10 +1292,10 @@ void    vTableAmount()
         if(NULL == (pstRun = pInitHitTest(pstSavm, pstIndex[i].m_table)))
             continue;
 
-		memset(szTable, 0, sizeof(szTable));
-		if(!strcmp(pstIndex[i].m_szPart, pstIndex[i].m_szOwner))
+        memset(szTable, 0, sizeof(szTable));
+        if(!strcmp(pstIndex[i].m_szPart, pstIndex[i].m_szOwner))
             strcpy(szTable, pstIndex[i].m_szTable);
-		else
+        else
             snprintf(szTable, sizeof(szTable), "%s@%s", pstIndex[i].m_szPart, pstIndex[i].m_szTable);
 
         vPrintAmount(pstIndex[i].m_table, szTable, lGetTblValid(pstIndex[i].m_table),
@@ -1306,6 +1306,93 @@ void    vTableAmount()
     fprintf(stdout, "\n");
 
     return ;
+}
+
+/*************************************************************************************************
+    description：show table index
+    parameters：
+    return：
+        RC_SUCC                            --success
+        RC_FAIL                            --failure
+  *************************************************************************************************/
+long    _lShowTableInfo(SATvm *pstSavm, char *pszTable, bool bRmt)
+{
+    size_t  i;
+    TIndex  stIndex;
+    TblKey  *pstKey = NULL;
+    TField  *pstField = NULL;
+    void    *pvWhere = NULL, *pvUpdate = NULL;
+
+    memset(&stIndex, 0, sizeof(TIndex));
+    if(!strlen(pszTable))
+    {
+        pstSavm->m_lErrno = SQL_TABLE_NIL;
+        return RC_FAIL; 
+    }
+
+    strncpy(stIndex.m_szPart, sgetvalue(pszTable, "@", 2), sizeof(stIndex.m_szPart));
+    strncpy(stIndex.m_szTable, sgetvalue(pszTable, "@", 1), sizeof(stIndex.m_szTable));
+    supper(stIndex.m_szTable);
+    if(0x00 == stIndex.m_szPart[0])
+        strcpy(stIndex.m_szPart, sGetNode());
+
+    if(bRmt)
+    {
+        if(RC_SUCC != lTvmGetTblIndex(pstSavm, stIndex.m_szTable, stIndex.m_szPart, &stIndex))
+            return RC_FAIL;
+
+        return RC_FAIL;
+    }
+
+    if(RC_SUCC != lGetTblIndex(pstSavm, stIndex.m_szTable, stIndex.m_szPart, &stIndex))
+        return RC_FAIL;
+
+    if(RC_SUCC != lInitSATvm(pstSavm, stIndex.m_table))
+        return RC_FAIL;
+
+    if(NULL == pInitHitTest(pstSavm, pstSavm->tblName))
+    {
+        fprintf(stderr, "hit test table (%d) failed, err:(%d)(%s)\n", stIndex.m_table,
+            pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
+        return ;
+    }
+
+    if(HAVE_UNIQ_IDX(pstSavm->tblName))
+    {
+        fprintf(stdout, "INDEX-NAME:[\033[4;33mUNIQUE\033[0m]  "
+            "INDEX-TYPE:[\033[4;33mRBTREE\033[0m]\n");
+        pstKey = pGetTblIdx(stIndex.m_table);
+        for(i = 0; i < lGetIdxNum(pstSavm->tblName); i ++)
+        {
+            fprintf(stdout, "FROM:%4ld, LEN:%4ld, ATTR:%ld, FIELD:%s\n", pstKey[i].m_lFrom,
+                pstKey[i].m_lLen, pstKey[i].m_lAttr, pstKey[i].m_szField);
+        }
+    }
+
+    if(HAVE_HASH_IDX(pstSavm->tblName) || HAVE_NORL_IDX(pstSavm->tblName))
+    {
+        if(HAVE_HASH_IDX(pstSavm->tblName))
+        {
+            fprintf(stdout, "\nINDEX-NAME:[\033[4;33mQUERY\033[0m]   "
+                "INDEX-TYPE:[\033[4;33mHASH-LIST]\n");
+        }
+        else if(HAVE_NORL_IDX(pstSavm->tblName))
+        {
+            fprintf(stdout, "\nINDEX-NAME:[\033[4;33mQUERY\033[0m]   "
+                "INDEX-TYPE:[\033[4;33mRBTREE-LIST\033[0m]\n");
+        }
+     
+        pstKey = pGetTblGrp(pstSavm->tblName);
+        for(i = 0; i < lGetGrpNum(pstSavm->tblName); i ++)
+        {
+            fprintf(stdout, "FROM:%4ld, LEN:%4ld, ATTR:%ld, FIELD:%s\n", pstKey[i].m_lFrom,
+                pstKey[i].m_lLen, pstKey[i].m_lAttr, pstKey[i].m_szField);
+        }
+    }
+
+    vTblDisconnect(pstSavm, pstSavm->tblName);
+
+    return RC_SUCC;
 }
 
 /*************************************************************************************************
@@ -2221,13 +2308,13 @@ long    _lExeSelect(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, char *pvD
     SQLFld  *pstNode = NULL;
     Rowgrp  *pstList = NULL;
     long    lTime = lGetTiskTime();
-    size_t  i, lOffset, lRows, lRet;
-    char    szDelmit[64], *pvResult = NULL;
+    size_t  i, lOffset, lRows, lRet, j, k, m;
+    char    szDelmit[64], *pvResult = NULL, *p;
 
     memset(szDelmit, 0, sizeof(szDelmit));
     pstSavm->pstVoid = (void *)pvData;
     pstSavm->tblName = pstIndex->m_table;
-    pstSavm->lSize = pstIndex->m_lRowSize;
+    pstSavm->lSize   = pstIndex->m_lRowSize;
     if(bRmt)
         lRet = lTvmQuery(pstSavm, &lRows, (void **)&pvResult);
     else
@@ -2243,6 +2330,92 @@ long    _lExeSelect(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, char *pvD
         return RC_FAIL;
     }
 
+    lTime -= lGetTiskTime();
+    if(g_stCustom.m_eShow && !pszFile)
+    {
+        for(lRet = 0, pstNode = pstRoot; pstNode; pstNode = pstNode->pstNext)
+        {
+            if(lRet < strlen(pstNode->m_stKey.m_szField))
+                lRet = strlen(pstNode->m_stKey.m_szField);
+        }
+
+        for(i = 0, m = 0, ++ lRet; i < lRows && i < pstSavm->m_lEffect; i ++)
+        {
+            lOffset = pstIndex->m_lRowSize * i;
+            for(k = lRet + 20, pstNode = pstRoot; pstNode; pstNode = pstNode->pstNext)
+            {
+                pstKey = &pstNode->m_stKey;
+                switch(pstKey->m_lAttr)
+                {
+                case FIELD_DOUB:
+                    switch(pstKey->m_lLen)
+                    {
+                    case    4:
+                        fprintf(stdout, "%-*s:%f\n", lRet, pstNode->m_stKey.m_szField, 
+                            *((float *)(pvResult + lOffset + pstKey->m_lFrom)));
+                        break;
+                    case    8:
+                        fprintf(stdout, "%-*s:%f\n", lRet, pstNode->m_stKey.m_szField, 
+                            *((double *)(pvResult + lOffset + pstKey->m_lFrom)));
+                        break;
+                    default:
+                        break;
+                    }
+                    break;
+                case FIELD_LONG:
+                    switch(pstKey->m_lLen)
+                    {
+                    case    2:
+                        fprintf(stdout, "%-*s:%d\n", lRet, pstNode->m_stKey.m_szField, 
+                            *((sint *)(pvResult + lOffset + pstKey->m_lFrom)));
+                        break;
+                    case    4:
+                        fprintf(stdout, "%-*s:%d\n", lRet, pstNode->m_stKey.m_szField, 
+                            *((int *)(pvResult + lOffset + pstKey->m_lFrom)));
+                        break;
+                    case    8:
+                        fprintf(stdout, "%-*s:%lld\n", lRet, pstNode->m_stKey.m_szField, 
+                            *((llong *)(pvResult + lOffset + pstKey->m_lFrom)));
+                        break;
+                    default:
+                        break;
+                    }
+                    break;
+                case FIELD_CHAR:
+                    if(strlen(pvResult + lOffset + pstKey->m_lFrom) > k)
+                        k = strlen(pvResult + lOffset + pstKey->m_lFrom);
+                    fprintf(stdout, "%-*s:%.*s\n", lRet, pstNode->m_stKey.m_szField, 
+                        (int)pstKey->m_lLen, pvResult + lOffset + pstKey->m_lFrom); 
+                    break;
+                default:
+                    break;
+                }
+            }
+
+            if((i + 1) == lRows)  // last row
+                break;
+
+            for(j = 0;  j < k; j ++)
+                fprintf(stdout, "-");
+            fprintf(stdout, "\n");
+
+            if(++ m == g_stCustom.m_lRows)    // Total output row number at once
+            {
+                m = 0;
+                fprintf(stdout, "\b\b");
+                while(10 != getchar());
+                continue;
+            }
+        }
+        fprintf(stdout, "\n");
+        fflush(stdout);
+        TFree(pvResult);
+
+        fprintf(stdout, "---(%ld) records selected, ep(%d), %s---\n", pstSavm->m_lEffect, 
+            pstSavm->m_lEType, sGetCostTime(-1 * lTime));
+        return RC_SUCC;
+    }
+    
     if(pszFile)
     {
         if(NULL == (fp = fopen(pszFile, "wb")))
@@ -2263,7 +2436,7 @@ long    _lExeSelect(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, char *pvD
         fprintf(fp, "%s ", pstNode->m_stKey.m_szField);
     fprintf(fp, "\n");
 
-    for(i = 0; i < lRows && i < pstSavm->m_lEffect; i ++)
+    for(m = 0, i = 0; i < lRows && i < pstSavm->m_lEffect; i ++)
     {
         lOffset = pstIndex->m_lRowSize * i;
         for(pstNode = pstRoot; pstNode; pstNode = pstNode->pstNext)
@@ -2313,9 +2486,16 @@ long    _lExeSelect(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, char *pvD
         }
         fprintf(fp, "\n");
         fflush(fp);
+
+        if(NULL == pszFile && (++ m) == g_stCustom.m_lRows)    // Total output row number at once
+        {
+            m = 0;
+            fprintf(stdout, "\b\b");
+            while(10 != getchar());
+            continue;
+        }
     }
     TFree(pvResult);
-    lTime -= lGetTiskTime();
 
     if(pszFile)
     {
@@ -2343,6 +2523,7 @@ long    lParseSequece(SATvm *pstSavm, char *pszSQName, char *pszFiled, bool bRmt
     long    lRet;
     ulong   ulSeque;
 
+// select nextval from SEQUENCE@SEQ_TEST
     if(strcasecmp(pszFiled, "nextval"))
     {
         pstSavm->m_lErrno = SQL_ERR_FIELD;
@@ -3563,6 +3744,45 @@ long    _lUnloadSyntax(SATvm *pstSavm, char *pszSQL, bool bRmt)
 }
 
 /**************************************************************************************************
+    description：initial custom tables
+    parameters：
+    return：
+ **************************************************************************************************/
+void    vInitTableList(SATvm *pstSavm, bool bRmt)
+{
+    long    lRet;
+    size_t  i, lRows = 0;
+    TIndex  stIndex, *pstIndex = NULL;
+
+    pstSavm->bSearch = TYPE_SYSTEM;
+//    if(RC_SUCC != lInitSATvm(pstSavm, pstFace->m_table))
+//        return RC_FAIL;
+
+    conditinit(pstSavm, stIndex, SYS_TVM_INDEX);
+    conditnum(pstSavm, stIndex, m_lType, TYPE_CLIENT);
+    conditnum(pstSavm, stIndex, m_lLocal, RES_LOCAL_SID);
+
+    if(bRmt)
+        lRet = lTvmQuery(pstSavm, (size_t *)&lRows, (void **)&pstIndex);
+    else
+        lRet = lQuery(pstSavm, (size_t *)&lRows, (void *)&pstIndex);
+    if(RC_SUCC != lRet)
+        return ;
+
+    for(i = 0, lRet = strlen(g_stCustom.m_pszWord); i < lRows; i ++)
+    {
+        lRet += strlen(pstIndex[i].m_szTable) + 1;
+        if(lRet > ALLOC_CMD_LEN)
+            break;
+        strcat(g_stCustom.m_pszWord, pstIndex[i].m_szTable);
+        strcat(g_stCustom.m_pszWord, ",");
+    }
+
+    g_stCustom.m_lWord = lgetstrnum(g_stCustom.m_pszWord, ",");
+    TFree(pstIndex);
+    return ;
+}
+/**************************************************************************************************
     description：Parse and execute SQL statements
     parameters：
     return：
@@ -3614,6 +3834,8 @@ long    lExecuteSQL(SATvm *pstSavm, char *pszSQL)
         vTableAmount();
         return RC_SUCC;
     }
+    else if(!strncasecmp(pszSQL, "show index from ", 16))
+        return _lShowTableInfo(pstSavm, pszSQL + 16, false);
     else if(!strncasecmp(pszSQL, "comment ", 8))
         return _lCommentSyntax(pstSavm, pszSQL + 8, false);
     else if(!strncasecmp(pszSQL, "select ", 7))
@@ -3685,6 +3907,8 @@ long    lExecuteTvm(SATvm *pstSavm, char *pszSQL)
             sGetTError(pstSavm->m_lErrno));
         return RC_SUCC;
     }
+    else if(!strncasecmp(pszSQL, "show index from ", 16))
+        return _lShowTableInfo(pstSavm, pszSQL + 16, true);
     else if(!strncasecmp(pszSQL, "select ", 7))
         return _lSelectSyntax(pstSavm, pszSQL, NULL, NULL, true);
     else if(!strncasecmp(pszSQL, "update ", 7))
@@ -3892,11 +4116,16 @@ void   vAddHistory(char *s)
 {
     FILE   *fp = NULL;
     char   szPath[512];
+    static  char   szCmd[512] = {0};
 
     if(!s || !strlen(s))
         return ;
 
+    if(!strcmp(szCmd, s))
+        return ;
+
     memset(szPath, 0, sizeof(szPath));
+    strncpy(szCmd, s, sizeof(szCmd));
     snprintf(szPath, sizeof(szPath), "%s/%s", getenv("TVMDBD"), STVM_SQL_LINE);
     if(NULL == (fp = fopen(szPath, "a+")))
         return ;
@@ -3951,6 +4180,150 @@ void   vSetHistory()
 }
 
 /**************************************************************************************************
+    description：customization
+    parameters：
+    return：
+ **************************************************************************************************/
+void    vCustomization(SATvm *pstSavm, char *s)
+{
+    strimall(s);
+    strimcrlf(s);
+
+    if(!strcasecmp(s, "debug on"))
+        g_stCustom.m_eDebug = 1;
+    else if(!strcasecmp(s, "debug off"))
+        g_stCustom.m_eDebug = 0;
+    else if(!strcasecmp(s, "showmode row"))
+        g_stCustom.m_eShow = 1;
+    else if(!strcasecmp(s, "showmode column"))
+        g_stCustom.m_eShow = 0;
+    else if(!strncasecmp(s, "showsize ", 9))
+        g_stCustom.m_lRows = atol(s + 9);
+    else
+    { 
+        pstSavm->m_lErrno = SQL_SYNTX_ERR;
+        fprintf(stderr, "customizing syntax error, (%d)(%s)\n", pstSavm->m_lErrno, 
+            sGetTError(pstSavm->m_lErrno));
+    }
+
+    return ;
+}
+
+/*************************************************************************************************
+    description：Get the key from matches list
+    parameters：
+        pszText                    --user text
+        nPos                       --last pos
+    return：
+        char*
+ *************************************************************************************************/
+char*  sCommandKey(const char *pszText, int nPos)
+{
+    static int  i;
+    char   szKey[64];
+
+    for(i = nPos == 0 ? 0 : i; i < g_stCustom.m_lKey; i ++)
+    {
+        memset(szKey, 0, sizeof(szKey));
+        strncpy(szKey, sfieldvalue(g_stCustom.m_pszKey, ",", i + 1), sizeof(szKey));
+        if(!strncasecmp(szKey, pszText, strlen(pszText)))
+        {
+            i ++;
+            return strdup(szKey);
+        }
+    }
+
+    return NULL;
+}
+
+/*************************************************************************************************
+    description：Get the word from matches list
+    parameters：
+        pszText                    --user text
+        nPos                       --last pos
+    return：
+        char*
+ *************************************************************************************************/
+char*  sCommandWord(const char *pszText, int nPos)
+{
+    static int  i;
+    char   szWord[64];
+
+    for(i = nPos == 0 ? 0 : i; i < g_stCustom.m_lWord; i ++)
+    {
+        memset(szWord, 0, sizeof(szWord));
+        strncpy(szWord, sfieldvalue(g_stCustom.m_pszWord, ",", i + 1), sizeof(szWord));
+        if(!strncasecmp(szWord, pszText, strlen(pszText)))
+        {
+            i ++;
+            return strdup(szWord);
+        }
+    }
+
+    return NULL;
+}
+
+/*************************************************************************************************
+    description：Get the matches list
+    parameters：
+        pszCmd                    --user text
+    return：
+        char*
+ *************************************************************************************************/
+char **pMatchCompletion(const char *pszCmd, int nPos, int nEnd)
+{
+    char **ppszMatch = NULL;
+
+    if(NULL == pszCmd || !strlen(pszCmd))
+        return NULL;
+
+    if(nPos == 0)
+        ppszMatch = rl_completion_matches(pszCmd, sCommandKey);
+    else
+        ppszMatch = rl_completion_matches(pszCmd, sCommandWord);
+
+    return ppszMatch;
+}
+
+/**************************************************************************************************
+    description：initial custom
+    parameters：
+    return：
+ **************************************************************************************************/
+void    vInitialCustom()
+{
+    memset(&g_stCustom, 0, sizeof(TCustom));
+    g_stCustom.m_eDebug = 0;
+    g_stCustom.m_eShow  = 0;  // 显示模式 记录为单位，行为单位
+    g_stCustom.m_lRows  = 1;
+    g_stCustom.m_bInit  = false;
+    g_stCustom.m_lKey   = 0;
+    g_stCustom.m_lWord  = 0;
+    g_stCustom.m_pszKey = NULL;
+    g_stCustom.m_pszWord = NULL;
+
+   	g_stCustom.m_pszKey = (char *)calloc(1, ALLOC_CMD_LEN);
+   	g_stCustom.m_pszWord = (char *)calloc(1, ALLOC_CMD_LEN);
+    if(NULL == g_stCustom.m_pszKey || NULL == g_stCustom.m_pszWord)
+        exit(-1);
+
+    snprintf(g_stCustom.m_pszKey, ALLOC_CMD_LEN, "SELECT,INSERT,"
+        "UPDATE,DELETE,DROP,RENAME,TRUNCATE,REPLACE,CLEAR,EXIT,CREATE,BEGIN WORK,"
+        "END WORK,COMMIT WORK,ROLLBACK WORK,SHOW,COMMENT,LOAD,UNLOAD,SET,");
+    g_stCustom.m_lKey = lgetstrnum(g_stCustom.m_pszKey, ",");
+
+   //select nextval from SEQUENCE@SEQ_TEST
+    snprintf(g_stCustom.m_pszWord, ALLOC_CMD_LEN, "SET,FROM,WHERE,"
+        "COUNT(1),MAX,MIN,NEXTVAL,ORDER BY,GROUP BY,SEQUENCE@,SYS_TVM_FIELD,"
+        "SYS_TVM_DOMAIN,SYS_TVM_SEQUE,TABLES,INTO,INFO,INDEX,VALUES,DEBUG [ON|OFF],"
+        "SHOWMODE [ROW|COLUMN],SHOWSIZE [NUM],");
+    g_stCustom.m_lWord = lgetstrnum(g_stCustom.m_pszWord, ",");
+ 
+    rl_attempted_completion_function = pMatchCompletion;
+    return ;
+}
+
+/**************************************************************************************************
     description：Execute SQL functions
     parameters：
     return：
@@ -3965,10 +4338,18 @@ void    vSQLStatement(int argc, char *argv[])
     system("stty erase ^?");
     system("stty erase ^H");
     fprintf(stdout, "\n%s\n", sFuncVersion());
+	vInitialCustom();
+ //  initialize_readline();
     for(i = 2; i < argc; i ++)
     {
         if(!strcasecmp(argv[i], "--debug=on"))
-            elog = 1;
+            g_stCustom.m_eDebug = 1;
+        else if(!strcasecmp(argv[i], "--showmode=row"))
+            g_stCustom.m_eShow = 1;
+        else if(!strcasecmp(argv[i], "--showmode=column"))
+            g_stCustom.m_eShow = 0;
+        else if(!strncasecmp(argv[i], "--showsize=", 11))
+            g_stCustom.m_lRows = atol(argv[i] + 11);
         else if(!strncasecmp(argv[i], "--msql=", 7))
         {
             if(NULL == (fp = fopen(argv[i] + 7, "rb")))
@@ -4010,6 +4391,7 @@ void    vSQLStatement(int argc, char *argv[])
     }            
 
     vSetHistory();
+    vInitTableList(pstSavm, lRemote > 0 ? true : false);
     while(1)
     {
         if(fp)
@@ -4030,12 +4412,22 @@ void    vSQLStatement(int argc, char *argv[])
                 continue;
         }
 
+        srtrim(szSQL);
         if(!strcmp(pszUser, "q") || !strcmp(pszUser, "Q") || !strcmp(pszUser, "exit"))
             break;
 
         if(!strcasecmp(pszUser, "clear"))
         {
             system("clear");
+            TFree(pszUser);
+            continue;
+        }
+        else if(!strncasecmp(pszUser, "set ", 4))
+        {
+            vCustomization(pstSavm, pszUser + 4);
+            fprintf(stdout, "\n\n\n");
+            add_history(pszUser);
+            vAddHistory(pszUser);
             TFree(pszUser);
             continue;
         }
@@ -4465,14 +4857,14 @@ int     main(int argc, char *argv[])
                 fprintf(stderr, "rebuild index failure, %s\n", sGetTError(pstSavm->m_lErrno));
             return RC_SUCC;
         case    'l':
-            fprintf(stdout, "Do you want to initialize the lock of table (%d) Y/N?:", atol(optarg));
+            fprintf(stdout, "Do you want to initialize the lock of table (%ld) Y/N?:", atol(optarg));
             lRet = getchar();
             if(0x59 != lRet && 0x79 != lRet)
                 return RC_SUCC;
             if(RC_SUCC != lResetLock(pstSavm, atol(optarg)))
-                fprintf(stderr, "重置表(%d)失败, %s\n", atol(optarg), sGetTError(pstSavm->m_lErrno));
+                fprintf(stderr, "重置表(%ld)失败, %s\n", atol(optarg), sGetTError(pstSavm->m_lErrno));
             else
-                fprintf(stderr, "重置表(%d)完成, completed successfully !!\n", atol(optarg));
+                fprintf(stderr, "重置表(%ld)完成, completed successfully !!\n", atol(optarg));
             return RC_SUCC;
         case    'v':
             fprintf(stdout, "%s\n", sGetTVMVers());

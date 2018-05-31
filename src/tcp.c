@@ -1757,9 +1757,9 @@ long    lPollRequest(SATvm *pstSovm, SKCon *pstCon, TFace *pstFace, void *pstVoi
         }
     }
 
-    if(PROT_JAVA & pstFace->m_enum)
+    if(PROTOCAL_JAVA & pstFace->m_enum)
     {
-        pstFace->m_enum = pstFace->m_enum ^ PROT_JAVA;
+        pstFace->m_enum = pstFace->m_enum ^ PROTOCAL_JAVA;
         pstFace->m_lDLen = pstRun->m_lRowSize;
         if(NULL == (pvData = pProtocaJava(pstSovm, pstVoid, pstFace, pvData, pstFace->m_lRows)))
         {

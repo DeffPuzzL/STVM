@@ -101,9 +101,9 @@ void    vDebugTable(TABLE t, long eType)
     {
         fprintf(stdout, "\n---------------------------- TABLE HEAND INFO ----------------------"
             "----------\n");
-        fprintf(stdout, "TABLE:%9d, extern:%10ld, NAME:%s\t\nSHTree:%8ld, SHList:%10ld, "
+        fprintf(stdout, "TABLE:%9u, extern:%10ld, NAME:%s\t\nSHTree:%8ld, SHList:%10ld, "
             "TblDef:%11ld\nGroup:%9ld, MaxRow:%10ld, Valid:%12ld\nlNodeNil:%6ld, lIType:%10d, "
-            "Table:%12ld\nIdxLen:%8ld, TreePos:%9ld, TreeRoot:%9d\nGrpLen:%8ld, GroupPos:%8ld, "
+            "Table:%12ld\nIdxLen:%8ld, TreePos:%9ld, TreeRoot:%9ld\nGrpLen:%8ld, GroupPos:%8ld, "
             "GroupRoot:%8ld\nData:%10ld, ReSize:%10ld, Truck:%12ld\nListPos:%7ld, ListOfs:%9ld\n", 
             ((TblDef *)pGetTblDef(t))->m_table, ((TblDef *)pGetTblDef(t))->m_lExtern, 
             ((TblDef *)pGetTblDef(t))->m_szTable, sizeof(SHTree), sizeof(SHList), sizeof(TblDef), 
@@ -133,7 +133,7 @@ void    vDebugTable(TABLE t, long eType)
                 pstKey[i].m_lLen, pstKey[i].m_lAttr, pstKey[i].m_lIsPk, pstKey[i].m_szField);
         }
 
-        fprintf(stdout, "\n--------------------------------UNIQ INDEX FIELD--------------"
+        fprintf(stdout, "\n-------------------------------CHECK INDEX FIELD--------------"
             "----------------\n");
         for(i = 0, pstKey = pGetTblGrp(t); i < lGetGrpNum(t); i ++)
         {

@@ -3,13 +3,14 @@ LIBDIR= -L$(HOME)/lib -L../lib -lstvm -lreadline -lm -lc -ldl -lpthread
 AR=ar
 LD=ld
 LN=ln
-CC=cc -fPIC
-CO=-c -g -DMAX_INDEX_LEN=64 -DMAX_FILED_NUM=64
+#CC=cc -fPIC -O2 -Wno-unused-result -m64 -march=native
+CC=cc -fPIC -O2 -Wno-unused-result -march=native
+CO=-c -g -O2 -DMAX_INDEX_LEN=64 -DMAX_FILED_NUM=64 -Wno-unused-result 
 LDFLAG=-shared -g
 OUTLIB=../lib
 OUTBIN=../bin
 
-OBJFILE=tree.o sem.o msg.o tcp.o str.o list.o conf.o
+OBJFILE=tree.o sem.o msg.o tcp.o str.o list.o conf.o queue.o
 TARGET=$(OUTLIB)/libstvm.a
 TARDLL=$(OUTLIB)/libstvm.so
 TARVER=$(OUTLIB)/libstvm.so.1.2

@@ -1,7 +1,7 @@
 INCDIR= -I/usr/include -I$(HOME)/include -I./ -I./include -I../include
 LIBDIR= -L$(HOME)/lib -L../lib -lstvm  -lm -lc -ldl -lpthread
 CC=cc -fPIC
-CO=-c -g
+CO=-c -pg
 OUTLIB=../lib
 OUTBIN=../bin
 
@@ -18,9 +18,10 @@ EXTREME=extreme
 TRUNCATE=truncate
 DROP=drop
 CLICK=click
+REPLACE=replace
 PRESSURE=press_demo
 
-all: $(CREATE) $(INSERT) $(SELECT) $(QUERY) $(DELETE) $(UPDATE) $(COUNT) $(GROUP) $(EXTREME) $(TRUNCATE) $(DROP) $(PRESSURE) $(CLICK) clean
+all: $(CREATE) $(INSERT) $(SELECT) $(QUERY) $(DELETE) $(UPDATE) $(COUNT) $(GROUP) $(EXTREME) $(TRUNCATE) $(DROP) $(PRESSURE) $(CLICK) $(REPLACE) clean
 $(CREATE): create.o
 	$(CC) -o $@ $< $(LIBDIR)
 $(INSERT): insert.o
@@ -44,6 +45,8 @@ $(TRUNCATE): truncate.o
 $(DROP): drop.o
 	$(CC) -o $@ $< $(LIBDIR)
 $(CLICK): click.o
+	$(CC) -o $@ $< $(LIBDIR)
+$(REPLACE): replace.o
 	$(CC) -o $@ $< $(LIBDIR)
 $(PRESSURE): press_demo.o
 	$(CC) -o $@ $< $(LIBDIR)

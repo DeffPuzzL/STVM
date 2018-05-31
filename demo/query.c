@@ -27,8 +27,9 @@ long    lQueryUserInfo()
     }
  
     conditinit(pstSavm, stUser, TBL_USER_INFO);                // 绑定变量
+    conditnum(pstSavm, stUser, acct_id, 2018053017);
     stringset(pstSavm, stUser, user_type, "1");                // 查询条件赋值
-    stringset(pstSavm, stUser, user_no, "20180223");           // 查询条件赋值
+    stringset(pstSavm, stUser, user_no, "20180224");           // 查询条件赋值
  
     if(RC_SUCC != lQuery(pstSavm, &lRow, (void **)&pstUser)) 
     {

@@ -33,11 +33,11 @@ typedef long                 CREATE;
 //#pragma pack(4)
 
 #define TVM_VKERNEL                        "1.2.0.0"
-#define TVM_VERSION                        "1.2.3.0"
+#define TVM_VERSION                        "1.2.4.0"
 /*************************************************************************************************
    custom macro
  *************************************************************************************************/
-#define PROT_JAVA                           512
+#define FIELD_SEL                           512
 #define FIRST_ROW                           256
 #define ORDER_DESC                          128
 #define ORDER_ASC                           64
@@ -66,6 +66,7 @@ typedef long                 CREATE;
 #define OPERATE_UPDATE                      4
 #define OPERATE_SELECT                      8
 
+#define PROTOCAL_JAVA                       512
 #define OPERAYS_INSERT                      1025
 #define OPERAYS_DELETE                      1026
 #define OPERAYS_UPDATE                      1027
@@ -112,6 +113,7 @@ typedef long                 CREATE;
 #endif
 
 #define MAX_FIELD_LEN                       32          // maxinum length of Field name
+#define ALLOC_CMD_LEN                       1024        // maxinum length of command
 
 #ifndef MAX_FILED_NUM 
 #define MAX_FILED_NUM                       64          // maximum number of fields in a table
@@ -636,6 +638,21 @@ typedef    struct    __TVM_BOOT_PARAM
 }TBoot;
 
 /*************************************************************************************************
+   STVM user define
+ *************************************************************************************************/
+typedef struct __STVM_CUSTOMIZE
+{
+    Benum    m_eDebug;
+    Benum    m_eShow;
+    long     m_lRows;
+    bool     m_bInit;
+    long     m_lKey;
+    char     *m_pszKey;
+    long     m_lWord;
+    char     *m_pszWord;
+}TCustom;
+
+/*************************************************************************************************
     内部函数
  *************************************************************************************************/
 #ifdef __cplusplus
@@ -767,6 +784,7 @@ extern    long     lInsert(SATvm *pstSavm);
 extern    long     lTruncate(SATvm *pstSavm, TABLE t);
 extern    long     lSelect(SATvm *pstSavm, void *psvOut);
 extern    long     lUpdate(SATvm *pstSavm, void *psvUpd);
+extern    long     lReplace(SATvm *pstSavm, void *pvReplace);
 extern    long     lCount(SATvm *pstSavm, size_t *plCount);
 extern    long     lClick(SATvm *pstSavm, ulong *puHits);
 extern    long     lExtreme(SATvm *pstSavm, void *psvOut);
