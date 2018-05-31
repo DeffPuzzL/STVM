@@ -6435,6 +6435,36 @@ long    _lInsertTruck(SATvm *pstSavm, void *pvAddr, TABLE t, SHTruck *pstTruck, 
 }
 
 /*************************************************************************************************
+    description：increate field
+    parameters:
+        pstCond                    --decoreate condit
+        pvData                     --memory address
+        pe                         --Table struct define
+    return:
+ *************************************************************************************************/
+void    vIncrease(FdCond *pstCond, char *pvData, TblDef *pe)
+{
+    register int    i = 0;
+    FdKey           *pFdKey;
+
+    if(0 == pstCond->uFldcmp)
+        return ;
+
+    for(i = 0; i < pstCond->uFldcmp; i ++)
+    {
+        pFdKey = &pstCond->stFdKey[i]; 
+        if(!(pFdKey->uDecorate & FIELD_INCR))
+            continue;
+
+        if(pFdKey->uFldlen < sizeof(llong))
+            continue;
+   
+        pe->m_lExSeQ ++;
+        memcpy(pvData + pFdKey->uFldpos, &pe->m_lExSeQ, sizeof(llong));
+    }
+}
+
+/*************************************************************************************************
     description：insert data to table
     parameters:
         pstSavm                    --stvm handle
@@ -6454,6 +6484,9 @@ long    __lInsert(SATvm *pstSavm, void *pvAddr, TABLE t, ulong uTimes)
         pstSavm->m_lErrno = DATA_SPC_FULL;
         return RC_FAIL;
     }
+
+    if(FIELD_INCR & pstSavm->lFind)
+        vIncrease(&pstSavm->stUpdt, (char *)pstSavm->pstVoid, (TblDef *)pvAddr);
 
     if(HAVE_UNIQ_IDX(t))
     {

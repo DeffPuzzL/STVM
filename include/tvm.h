@@ -37,7 +37,7 @@ typedef long                 CREATE;
 /*************************************************************************************************
    custom macro
  *************************************************************************************************/
-#define FIELD_SEL                           512
+#define FIELD_INCR                          512
 #define FIRST_ROW                           256
 #define ORDER_DESC                          128
 #define ORDER_ASC                           64
@@ -358,7 +358,7 @@ typedef long                 CREATE;
                                 (s).f = v;
 
 #define decorate(p,d,f,v)       vSetDecorate(&p->stUpdt, FLEN(d, f), FPOS(d, f), v); \
-                                p->lFind = (v) & FIRST_ROW;
+                                p->lFind = p->lFind | (v);
 
 #define stringreset(s,f,v)      strncpy((s).f, v, sizeof((s).f));
 #define stringresetv(s,f,...)   snprintf((s).f, sizeof((s).f), __VA_ARGS__);
