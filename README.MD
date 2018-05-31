@@ -104,6 +104,12 @@ STVM也提供一个类型sqlpuls类型简单工具。
 >* 3、新增comment关键字，在创建脚本文件或M-SQL中本地使用
 >* 4、修复char字符拷贝和M-SQL界面非人性化操作。
 
+====***更新日期:20180531***====
+
+>* 1、新增replace功能(有则更新，无则新增), 包括同、异步接口
+>* 2、在M-SQL支持查询索引 show index from tablename
+>* 3、新增用户M-SQL用户体验(TAB补全、查询展示showmode、showsize)
+
 **下本版本：**
 * 1、新增多机资源共享方式。
 * 2、JAVA接口开发
