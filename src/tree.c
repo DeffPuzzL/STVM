@@ -34,6 +34,7 @@ extern long       _lSelectByRt(SATvm *pstSavm, void *psvOut);
 extern long       _lCountByRt(SATvm *pstSavm, size_t *plCount);
 extern long       _lDeleteByRt(SATvm *pstSavm);
 extern long       _lUpdateByRt(SATvm *pstSavm, void *pvUpdate);
+extern long       _lReplaceByRt(SATvm *pstSavm, void *pvReplace);
 extern long       _lTruncateByRt(SATvm *pstSavm, TABLE t);
 extern long       _lQueryByRt(SATvm *pstSavm, size_t *plOut, void **ppsvOut);
 extern long       _lExtremeByRt(SATvm *pstSavm, void *psvOut);
@@ -207,23 +208,23 @@ void    vPrintHex(char *s, long lIdx, bool bf)
   *************************************************************************************************/
 CREATE  lCreateTvmIndex()
 {   
-    DEFINE(SYS_TVM_INDEX, "SYS_TVM_INDEX", "", TIndex)
-    FIELD(TIndex,    m_table,        "m_table",        FIELD_LONG)
-    FIELD(TIndex,    m_lType,        "m_lType",        FIELD_LONG)
-    FIELD(TIndex,    m_szTable,      "m_szTable",      FIELD_CHAR)
-    FIELD(TIndex,    m_szPart,       "m_szPart",       FIELD_CHAR)
-    FIELD(TIndex,    m_szOwner,      "m_szOwner",      FIELD_CHAR)
-    FIELD(TIndex,    m_yKey,         "m_yKey",         FIELD_LONG)
-    FIELD(TIndex,    m_shmID,        "m_shmID",        FIELD_LONG)
-    FIELD(TIndex,    m_semID,        "m_semID",        FIELD_LONG)
-    FIELD(TIndex,    m_lPid,         "m_lPid",         FIELD_LONG)
-    FIELD(TIndex,    m_lValid,       "m_lValid",       FIELD_LONG)
-    FIELD(TIndex,    m_lMaxRows,     "m_lMaxRows",     FIELD_LONG)
-    FIELD(TIndex,    m_lRowSize,     "m_lRowSize",     FIELD_LONG)
-    FIELD(TIndex,    m_lLocal,       "m_lLocal",       FIELD_LONG)
-    FIELD(TIndex,    m_lState,       "m_lState",       FIELD_LONG)
-    FIELD(TIndex,    m_lPers,        "m_lPers",        FIELD_LONG)  
-    FIELR(TIndex,    m_szTime,       "m_szTime",       FIELD_LONG)  
+    DEFINE(SYS_TVM_INDEX, "", TIndex)
+    FIELD(TIndex,    m_table,        FIELD_LONG)
+    FIELD(TIndex,    m_lType,        FIELD_LONG)
+    FIELD(TIndex,    m_szTable,      FIELD_CHAR)
+    FIELD(TIndex,    m_szPart,       FIELD_CHAR)
+    FIELD(TIndex,    m_szOwner,      FIELD_CHAR)
+    FIELD(TIndex,    m_yKey,         FIELD_LONG)
+    FIELD(TIndex,    m_shmID,        FIELD_LONG)
+    FIELD(TIndex,    m_semID,        FIELD_LONG)
+    FIELD(TIndex,    m_lPid,         FIELD_LONG)
+    FIELD(TIndex,    m_lValid,       FIELD_LONG)
+    FIELD(TIndex,    m_lMaxRows,     FIELD_LONG)
+    FIELD(TIndex,    m_lRowSize,     FIELD_LONG)
+    FIELD(TIndex,    m_lLocal,       FIELD_LONG)
+    FIELD(TIndex,    m_lState,       FIELD_LONG)
+    FIELD(TIndex,    m_lPers,        FIELD_LONG)  
+    FIELR(TIndex,    m_szTime,       FIELD_LONG)  
 
     CREATE_IDX(NORMAL)
     IDX_FIELD(TIndex, m_szTable,     FIELD_CHAR);
@@ -243,16 +244,16 @@ CREATE  lCreateTvmIndex()
   *************************************************************************************************/
 CREATE  lCreateTvmField()
 {   
-    DEFINE(SYS_TVM_FIELD, "SYS_TVM_FIELD", "", TField)
-    FIELD(TField,    m_table,        "m_table",        FIELD_LONG)  
-    FIELD(TField,    m_szOwner,      "m_szOwner",      FIELD_CHAR)  
-    FIELD(TField,    m_szTable,      "m_szTable",      FIELD_CHAR)  
-    FIELD(TField,    m_szField,      "m_szField",      FIELD_CHAR)  
-    FIELD(TField,    m_lSeq,         "m_lSeq",         FIELD_LONG)  
-    FIELD(TField,    m_lAttr,        "m_lAttr",        FIELD_LONG)  
-    FIELD(TField,    m_lFrom,        "m_lFrom",        FIELD_LONG)  
-    FIELD(TField,    m_lLen,         "m_lLen",         FIELD_LONG)  
-    FIELD(TField,    m_lIsPk,        "m_lIsPk",        FIELD_LONG)  
+    DEFINE(SYS_TVM_FIELD, "", TField)
+    FIELD(TField,    m_table,        FIELD_LONG)  
+    FIELD(TField,    m_szOwner,      FIELD_CHAR)  
+    FIELD(TField,    m_szTable,      FIELD_CHAR)  
+    FIELD(TField,    m_szField,      FIELD_CHAR)  
+    FIELD(TField,    m_lSeq,         FIELD_LONG)  
+    FIELD(TField,    m_lAttr,        FIELD_LONG)  
+    FIELD(TField,    m_lFrom,        FIELD_LONG)  
+    FIELD(TField,    m_lLen,         FIELD_LONG)  
+    FIELD(TField,    m_lIsPk,        FIELD_LONG)  
 
     CREATE_IDX(NORMAL)
     IDX_FIELD(TField, m_table,       FIELD_LONG);
@@ -272,25 +273,25 @@ CREATE  lCreateTvmField()
   *************************************************************************************************/
 CREATE  lCreateTvmDomain()
 {   
-    DEFINE(SYS_TVM_DOMAIN, "SYS_TVM_DOMAIN", "", TDomain)
-    FIELD(TDomain,    m_skSock,       "m_skSock",       FIELD_LONG)  
-    FIELD(TDomain,    m_table,        "m_table",        FIELD_LONG)  
-    FIELD(TDomain,    m_mtable,       "m_mtable",       FIELD_LONG)  
-    FIELD(TDomain,    m_lLock,        "m_lLock",        FIELD_LONG)  
-    FIELD(TDomain,    m_lGroup,       "m_lGroup",       FIELD_LONG)  
-    FIELD(TDomain,    m_lKeepLive,    "m_lKeepLive",    FIELD_LONG)  
-    FIELD(TDomain,    m_lLastTime,    "m_lLastTime",    FIELD_LONG)  
-    FIELD(TDomain,    m_lTimeOut,     "m_lTimeOut",     FIELD_LONG)  
-    FIELD(TDomain,    m_lTryMax,      "m_lTryMax",      FIELD_LONG)  
-    FIELD(TDomain,    m_lTryTimes,    "m_lTryTimes",    FIELD_LONG)  
-    FIELD(TDomain,    m_lRowSize,     "m_lRowSize",     FIELD_LONG)  
-    FIELD(TDomain,    m_lStatus,      "m_lStatus",      FIELD_LONG)  
-    FIELD(TDomain,    m_lPers,        "m_lPers",        FIELD_LONG)  
-    FIELD(TDomain,    m_lPort,        "m_lPort",        FIELD_LONG)
-    FIELD(TDomain,    m_szIp,         "m_szIp",         FIELD_CHAR)
-    FIELD(TDomain,    m_szTable,      "m_szTable",      FIELD_CHAR)  
-    FIELD(TDomain,    m_szPart,       "m_szPart",       FIELD_CHAR)  
-    FIELD(TDomain,    m_szOwner,      "m_szOwner",      FIELD_CHAR)  
+    DEFINE(SYS_TVM_DOMAIN, "", TDomain)
+    FIELD(TDomain,    m_skSock,       FIELD_LONG)  
+    FIELD(TDomain,    m_table,        FIELD_LONG)  
+    FIELD(TDomain,    m_mtable,       FIELD_LONG)  
+    FIELD(TDomain,    m_lLock,        FIELD_LONG)  
+    FIELD(TDomain,    m_lGroup,       FIELD_LONG)  
+    FIELD(TDomain,    m_lKeepLive,    FIELD_LONG)  
+    FIELD(TDomain,    m_lLastTime,    FIELD_LONG)  
+    FIELD(TDomain,    m_lTimeOut,     FIELD_LONG)  
+    FIELD(TDomain,    m_lTryMax,      FIELD_LONG)  
+    FIELD(TDomain,    m_lTryTimes,    FIELD_LONG)  
+    FIELD(TDomain,    m_lRowSize,     FIELD_LONG)  
+    FIELD(TDomain,    m_lStatus,      FIELD_LONG)  
+    FIELD(TDomain,    m_lPers,        FIELD_LONG)  
+    FIELD(TDomain,    m_lPort,        FIELD_LONG)
+    FIELD(TDomain,    m_szIp,         FIELD_CHAR)
+    FIELD(TDomain,    m_szTable,      FIELD_CHAR)  
+    FIELD(TDomain,    m_szPart,       FIELD_CHAR)  
+    FIELD(TDomain,    m_szOwner,      FIELD_CHAR)  
 
     CREATE_IDX(NORMAL)
     IDX_FIELD(TDomain, m_szTable,     FIELD_CHAR)
@@ -313,9 +314,9 @@ CREATE  lCreateTvmDomain()
   *************************************************************************************************/
 CREATE  lCreateTvmSeque()
 {   
-    DEFINE(SYS_TVM_SEQUE, "SYS_TVM_SEQUE", "", TSeque)
-    FIELD(TSeque,    m_szSQName,     "m_szSQName",      FIELD_CHAR) 
-    FIELD(TSeque,    m_uIncrement,   "m_uIncrement",    FIELD_LONG) 
+    DEFINE(SYS_TVM_SEQUE, "", TSeque)
+    FIELD(TSeque,    m_szSQName,     FIELD_CHAR) 
+    FIELD(TSeque,    m_uIncrement,   FIELD_LONG) 
 
     CREATE_IDX(UNQIUE)
     IDX_FIELD(TSeque, m_szSQName,      FIELD_CHAR)
@@ -1937,7 +1938,7 @@ void*    pCreateBlock(SATvm *pstSavm, TABLE t, size_t lSize, bool bCreate)
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-long    lAddIdxField(TABLE t, long type, long lFrom, long lLen, long lAttr)
+long    lAddIdxField(TABLE t, long type, long lFrom, long lLen, long lAttr, const char *pszDesc)
 {
     long    lIdx = 0;
     TblKey  *pstKey = NULL;
@@ -1967,6 +1968,9 @@ long    lAddIdxField(TABLE t, long type, long lFrom, long lLen, long lAttr)
         pstKey[lGetIdxNum(t)].m_lFrom = lFrom;
         pstKey[lGetIdxNum(t)].m_lLen  = lLen;
         pstKey[lGetIdxNum(t)].m_lAttr = lAttr;
+        strncpy(pstKey[lGetIdxNum(t)].m_szField, pszDesc, sizeof(pstKey[lGetIdxNum(t)].m_szField));
+        strcpy(pstKey[lGetIdxNum(t)].m_szAlias, pstKey[lGetIdxNum(t)].m_szField);
+
         ((TblDef *)pGetTblDef(t))->m_lIdxUp ++;
         ((TblDef *)pGetTblDef(t))->m_lIType |= type;
 
@@ -1996,6 +2000,8 @@ long    lAddIdxField(TABLE t, long type, long lFrom, long lLen, long lAttr)
         pstKey[lGetGrpNum(t)].m_lFrom = lFrom;
         pstKey[lGetGrpNum(t)].m_lLen  = lLen;
         pstKey[lGetGrpNum(t)].m_lAttr = lAttr;
+        strncpy(pstKey[lGetGrpNum(t)].m_szField, pszDesc, sizeof(pstKey[lGetGrpNum(t)].m_szField));
+        strcpy(pstKey[lGetGrpNum(t)].m_szAlias, pstKey[lGetGrpNum(t)].m_szField);
         ((TblDef *)pGetTblDef(t))->m_lGrpUp ++;
         ((TblDef *)pGetTblDef(t))->m_lIType |= type;
 
@@ -10596,8 +10602,7 @@ long    lReplace(SATvm *pstSavm, void *pvReplace)
     if(RES_REMOT_SID == pstRun->m_lLocal)
     {
         Tremohold(pstSavm, pstRun);
-        return RC_FAIL;
-//        return _lReplaceByRt(pstSavm, psvOut);
+        return _lReplaceByRt(pstSavm, pvReplace);
     }
 
     if(HAVE_UNIQ_IDX(pstSavm->tblName))

@@ -1358,6 +1358,7 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
         lSendBuffer(pstCon->m_skSock, pvOut, lData);
         TFree(pvOut);
         return RC_SUCC;
+    case  OPERATE_REPLACE:
     case  OPERATE_UPDATE:
         pstSavm->m_bWork = pstCon->m_bWork;
         pstSavm->m_pstWork = pstCon->m_pstWork;
@@ -1378,6 +1379,7 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
         lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
         return RC_SUCC;
 
+    case  OPERATS_REPLACE:
     case  OPERAYS_UPDATE:
         pstSavm->m_bWork = pstCon->m_bWork;
         pstSavm->m_pstWork = pstCon->m_pstWork;
@@ -3181,6 +3183,94 @@ long    _lUpdateByRt(SATvm *pstSavm, void *pvUpdate)
 }
 
 /*************************************************************************************************
+    description：remote - Replace
+    parameters:
+        pstSavm                    --stvm handle
+        psvUpdate                  --update 
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    _lReplaceByRt(SATvm *pstSavm, void *pvReplace)
+{
+    TDomain  *pvm, *pnoe;
+    long     lRet = RC_FAIL;
+    Rowgrp   *list = NULL, *node = NULL;
+
+    if(NULL == (node = pGetTblNode(pstSavm->tblName)))
+    {
+        pstSavm->m_lErrno = DOM_NOT_INITL;
+        return RC_FAIL;
+    }
+
+    pstSavm->m_lErrno = RESOU_DISABLE;
+    switch(lGetBootType())
+    {
+    case TVM_BOOT_CLUSTER:
+        for(list = node->pstSSet; list; list = list->pstNext)
+        {
+            if(!list->pstFset)
+                continue;
+
+            if(NULL == (pvm = (TDomain *)(list->pstFset->psvData)))
+                continue;
+
+            pnoe = (TDomain *)list->psvData;
+            if(0 == (OPERATE_UPDATE & pnoe->m_lPers) || 0 == (OPERATE_INSERT & pnoe->m_lPers)
+                || RESOURCE_ABLE != pvm->m_lStatus)
+                continue;
+
+            pstSavm->m_skSock = pvm->m_skSock;
+            pstSavm->tblName  = pnoe->m_mtable;
+            pthread_mutex_lock(&list->pstFset->lock);
+            if(RC_SUCC == lTvmReplace(pstSavm, pvReplace))
+            {
+                lRet = RC_SUCC;
+                pvm->m_lTryTimes = 0;
+                pvm->m_lLastTime = time(NULL);
+            }
+            else if(SOCK_COM_EXCP == pstSavm->m_lErrno)
+            {
+                pnoe->m_lRelia --;
+                Tlog("Update err: %s, T(%d), F(%s:%d), R(%d)", sGetTError(pstSavm->m_lErrno),
+                     pstSavm->tblName, pvm->m_szIp, pvm->m_lPort, pnoe->m_lRelia);
+            }
+
+            pthread_mutex_unlock(&list->pstFset->lock);
+        }
+        return lRet;
+    default:
+        for(list = node->pstSSet; list; list = list->pstNext)
+        {
+            if(NULL == (pvm = (TDomain *)(list->psvData)))
+                continue;
+
+            if(0 == (OPERATE_UPDATE & pnoe->m_lPers) || 0 == (OPERATE_INSERT & pnoe->m_lPers))
+                continue;
+
+            if(RC_SUCC != lTvmConnect(pstSavm, pvm->m_szIp, pvm->m_lPort, pvm->m_lTimeOut))
+                continue;
+
+            pstSavm->tblName = pvm->m_mtable;
+            lRet = lTvmReplace(pstSavm, pvReplace);
+            if(RC_SUCC == lRet || SOCK_COM_EXCP != pstSavm->m_lErrno)
+            {
+                close(pstSavm->m_skSock);
+                ((RunTime *)pGetRunTime(pstSavm, 0))->m_lRowSize = 0;
+                TFree(((RunTime *)pGetRunTime(pstSavm, 0))->pstVoid);
+                return lRet;
+            }
+
+            close(pstSavm->m_skSock);
+        }
+
+        ((RunTime *)pGetRunTime(pstSavm, 0))->m_lRowSize = 0;
+        TFree(((RunTime *)pGetRunTime(pstSavm, 0))->pstVoid);
+        return lRet;
+    }
+}
+
+/*************************************************************************************************
     description：remote - Group
     parameters:
         pstSavm                    --stvm handle
@@ -3597,6 +3687,7 @@ void*    pProtocaJava(SATvm *pstSavm, void *pstVoid, TFace *pstFace, void *pvBuf
     {
     case OPERATE_INSERT:
         return pvBuffer;
+    case OPERATE_REPLACE:
     case OPERATE_UPDATE:
         pstCond = &pstSavm->stUpdt;
         pstCond->uFldcmp = 0;
@@ -3731,6 +3822,8 @@ void*    pParsePacket(SATvm *pstSavm, void *pstVoid, TFace *pstFace, void *pvBuf
         return memcpy(pstVoid, pvData, pstFace->m_lDLen);
     case OPERAYS_UPDATE:
     case OPERATE_UPDATE:
+    case OPERATS_REPLACE:
+    case OPERATE_REPLACE:
         memcpy(&pstCond->uFldcmp, pvData, sizeof(uint));
         for(i = 0, pvData += sizeof(uint); i < pstCond->uFldcmp; i ++)
         {
@@ -4099,6 +4192,63 @@ long    lAsyUpdate(SATvm *pstSavm, void *pvData)
 }
 
 /*************************************************************************************************
+    description：API - replace by asynch
+    parameters:
+        pstSavm                    --stvm handle
+        pvData                     --update data
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    lAsyReplace(SATvm *pstSavm, void *pvData)
+{
+    RunTime *pstRun;
+    FdCond  *pstCond;
+    TFace   *pstFace;
+    uint    lWrite = sizeof(TFace);
+
+    if(!pstSavm || !pvData)
+    {
+        pstSavm->m_lErrno = CONDIT_IS_NIL;
+        return RC_FAIL;
+    }
+
+    pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
+    if(!pstRun->pstVoid)
+    {
+        pstSavm->m_lErrno = DOM_NOT_INITL;
+        return RC_FAIL;
+    }
+
+    pstFace = (TFace *)pstRun->pstVoid;
+    pstFace->m_lFind  = pstSavm->lFind;
+    pstFace->m_lDLen  = pstSavm->lSize;
+    pstFace->m_lErrno = TVM_DONE_SUCC;
+    pstFace->m_enum   = OPERATS_REPLACE;
+    pstFace->m_table  = pstSavm->tblName;
+
+    checkbuffer(pstSavm, pstRun, 2);
+    pstCond = &pstSavm->stUpdt;
+    if(0 == pstCond->uFldcmp)
+    {
+        pstSavm->m_lErrno = UPDFD_NOT_SET;
+        return RC_FAIL;
+    }
+
+    vBuildPacket(pstRun->pstVoid, pstSavm->pstVoid, &pstSavm->stCond, &lWrite);
+    vBuildPacket(pstRun->pstVoid, pvData, pstCond, &lWrite);
+    pstFace->m_lRows  = lWrite - sizeof(TFace);
+
+    if(lWrite != lSendBuffer(pstSavm->m_skSock, (void *)pstRun->pstVoid, lWrite))
+    {
+        pstSavm->m_lErrno = SOCK_COM_EXCP;
+        return RC_FAIL;
+    }
+        
+    return RC_SUCC;
+}
+
+/*************************************************************************************************
     description：API - insert by asynch
     parameters:
         pstSavm                    --stvm handle
@@ -4298,6 +4448,74 @@ long    lTvmUpdate(SATvm *pstSavm, void *pvData)
     pstFace->m_lDLen  = pstSavm->lSize;
     pstFace->m_lErrno = TVM_DONE_SUCC;
     pstFace->m_enum   = OPERATE_UPDATE;
+    pstFace->m_table  = pstSavm->tblName;
+
+    checkbuffer(pstSavm, pstRun, 2);
+    pstCond = &pstSavm->stUpdt;
+    if(0 == pstCond->uFldcmp)
+    {
+        pstSavm->m_lErrno = UPDFD_NOT_SET;
+        return RC_FAIL;
+    }
+
+    vBuildPacket(pstRun->pstVoid, pstSavm->pstVoid, &pstSavm->stCond, &lWrite);
+    vBuildPacket(pstRun->pstVoid, pvData, pstCond, &lWrite);
+    pstFace->m_lRows  = lWrite - sizeof(TFace);
+
+    if(lWrite != lSendBuffer(pstSavm->m_skSock, (void *)pstRun->pstVoid, lWrite))
+    {
+        pstSavm->m_lErrno = SOCK_COM_EXCP;
+        return RC_FAIL;
+    }
+        
+    if(sizeof(TFace) != lRecvBuffer(pstSavm->m_skSock, (char *)pstRun->pstVoid, sizeof(TFace)))
+    {
+        pstSavm->m_lErrno = SOCK_COM_EXCP;
+        return RC_FAIL;
+    }
+
+    pstSavm->m_lErrno = ((TFace *)pstRun->pstVoid)->m_lErrno;
+    if(0 != pstSavm->m_lErrno)
+        return RC_FAIL;
+
+    pstSavm->m_lEffect = ((TFace *)pstRun->pstVoid)->m_lRows;
+    return RC_SUCC;
+}
+
+/*************************************************************************************************
+    description：API - update
+    parameters:
+        pstSavm                    --stvm handle
+        pvData                     --update data
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    lTvmReplace(SATvm *pstSavm, void *pvData)
+{
+    RunTime *pstRun;
+    FdCond  *pstCond;
+    TFace   *pstFace;
+    uint    lWrite = sizeof(TFace);
+
+    if(!pstSavm || !pvData)
+    {
+        pstSavm->m_lErrno = CONDIT_IS_NIL;
+        return RC_FAIL;
+    }
+
+    pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
+    if(!pstRun->pstVoid)
+    {
+        pstSavm->m_lErrno = DOM_NOT_INITL;
+        return RC_FAIL;
+    }
+
+    pstFace = (TFace *)pstRun->pstVoid;
+    pstFace->m_lFind  = pstSavm->lFind;
+    pstFace->m_lDLen  = pstSavm->lSize;
+    pstFace->m_lErrno = TVM_DONE_SUCC;
+    pstFace->m_enum   = OPERATE_REPLACE;
     pstFace->m_table  = pstSavm->tblName;
 
     checkbuffer(pstSavm, pstRun, 2);

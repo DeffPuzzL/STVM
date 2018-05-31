@@ -125,6 +125,7 @@ extern long       lTvmInsert(SATvm *pstSavm);
 extern long       lTvmSelect(SATvm *pstSavm, void *pvOut);
 extern long       lTvmQuery(SATvm *pstSavm, size_t *plOut, void **ppvOut);
 extern long       lTvmUpdate(SATvm *pstSavm, void *pvData);
+extern long       lTvmReplace(SATvm *pstSavm, void *pvData);
 extern long       lTvmDelete(SATvm *pstSavm);
 extern long       lTvmExtreme(SATvm *pstSavm, void *pvOut);
 extern long       lTvmDropTable(SATvm *pstSavm, TABLE t);
@@ -138,6 +139,7 @@ extern long       lTvmResetLock(SATvm *pstSavm, TABLE t);
 extern long       lAsyInsert(SATvm *pstSavm);
 extern long       lAsyDelete(SATvm *pstSavm);
 extern long       lAsyUpdate(SATvm *pstSavm, void *pvData);
+extern long       lAsyReplace(SATvm *pstSavm, void *pvData);
 #ifdef __cplusplus
 }
 #endif

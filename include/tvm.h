@@ -70,7 +70,9 @@ typedef long                 CREATE;
 #define OPERAYS_INSERT                      1025
 #define OPERAYS_DELETE                      1026
 #define OPERAYS_UPDATE                      1027
+#define OPERATS_REPLACE                     1028
 
+#define OPERATE_REPLACE                     13
 #define OPERATE_TRCATE                      14
 #define OPERATE_COUNT                       15
 #define OPERATE_GROUP                       16
@@ -295,21 +297,21 @@ typedef long                 CREATE;
 /*************************************************************************************************
      创建表宏函数
  *************************************************************************************************/
-#define DEFINE(t, n, p, s)      TABLE tbl = t; long type = 0; \
+#define DEFINE(t, p, s)         TABLE tbl = t; long type = 0; \
                                 ((TblDef *)pGetTblDef(t))->m_table = t; \
                                 ((TblDef *)pGetTblDef(t))->m_lReSize = sizeof(s); \
                                 strncpy(((TblDef *)pGetTblDef(t))->m_szPart, p, MAX_FIELD_LEN); \
-                                strncpy(((TblDef *)pGetTblDef(t))->m_szTable, n, MAX_FIELD_LEN); \
+                                strncpy(((TblDef *)pGetTblDef(t))->m_szTable, #t, MAX_FIELD_LEN); \
                                 ((TblDef *)pGetTblDef(t))->m_lTruck = sizeof(s) + sizeof(SHTruck);
 
 #define CREATE_IDX(t)           type = t;
-#define IDX_FIELD(t, f, a)      if(RC_SUCC != lAddIdxField(tbl, type, FPOS(t, f), FLEN(t, f), a)) \
+#define IDX_FIELD(t, f, a)      if(RC_SUCC != lAddIdxField(tbl, type, FPOS(t, f), FLEN(t, f), a, #f)) \
                                     return RC_FAIL;
-#define FIELD(t, f, d, a)       if(RC_SUCC != lSetTableIdx(tbl, FPOS(t, f), FLEN(t, f), d, a, CHK_SELECT)) \
-                                    return RC_FAIL;
-#define FIELU(t, f, d, a)       if(RC_SUCC != lSetTableIdx(tbl, FPOS(t, f), FLEN(t, f), d, a, IDX_SELECT)) \
-                                    return RC_FAIL;
-#define FIELR(t, f, d, a)       if(RC_SUCC != lSetTableIdx(tbl, FPOS(t, f), FLEN(t, f), d, a, RCD_SELECT)) \
+#define FIELD(t, f, a)          if(RC_SUCC != lSetTableIdx(tbl, FPOS(t, f), FLEN(t, f), #f, a, CHK_SELECT)) \
+                                       return RC_FAIL;
+#define FIELU(t, f, a)          if(RC_SUCC != lSetTableIdx(tbl, FPOS(t, f), FLEN(t, f), #f, a, IDX_SELECT)) \
+                                       return RC_FAIL;
+#define FIELR(t, f, a)          if(RC_SUCC != lSetTableIdx(tbl, FPOS(t, f), FLEN(t, f), #f, a, RCD_SELECT)) \
                                     return RC_FAIL;
 #define FINISH                  return RC_SUCC;
 
@@ -696,7 +698,7 @@ extern    void*    pInitHitTest(SATvm *pstSavm, TABLE t);
 extern    long     lTableMaxRow(SATvm *pstSavm, TABLE t);
 extern    key_t    yGetIPCPath(SATvm *pstSavm, Benum em);
 extern    long     lGetBootConfig(SATvm *pstSavm, TBoot *pstBoot);
-extern    long     lAddIdxField(TABLE, long, long, long, long);
+extern    long     lAddIdxField(TABLE, long, long, long, long, const char *);
 extern    long     lSetTableIdx(TABLE, long, long, char*, long, long);
 extern    long     lUpdIndexPart(SATvm *pstSavm, TABLE t, char *pszPart);
 extern    TblKey*  pFindField(TblKey *pstIdx, long lNum, char *pszField);

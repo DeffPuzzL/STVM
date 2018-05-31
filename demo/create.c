@@ -15,13 +15,13 @@ typedef struct  __TBL_USER_INFO
 
 CREATE  lCreateUserInfo()
 {
-   DEFINE(TBL_USER_INFO, "TBL_USER_INFO", "", dbUser)
-   FIELD(dbUser,    acct_id,         "acct_id",       FIELD_LONG)
-   FIELD(dbUser,    user_no,         "user_no",       FIELD_CHAR)
-   FIELD(dbUser,    user_type,       "user_type",     FIELD_CHAR)
-   FIELD(dbUser,    user_nm,         "user_nm",       FIELD_CHAR)
-   FIELD(dbUser,    user_addr,       "user_addr",     FIELD_CHAR)
-   FIELD(dbUser,    user_phone,      "user_phone",    FIELD_CHAR)
+   DEFINE(TBL_USER_INFO, "", dbUser)
+   FIELD(dbUser,    acct_id,        FIELD_LONG)
+   FIELD(dbUser,    user_no,        FIELD_CHAR)
+   FIELD(dbUser,    user_type,      FIELD_CHAR)
+   FIELD(dbUser,    user_nm,        FIELD_CHAR)
+   FIELD(dbUser,    user_addr,      FIELD_CHAR)
+   FIELD(dbUser,    user_phone,     FIELD_CHAR)
  
    CREATE_IDX(NORMAL)        //    创建查询索引
    IDX_FIELD(dbUser, acct_id,       FIELD_LONG)
