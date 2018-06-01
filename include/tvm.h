@@ -96,6 +96,7 @@ typedef long                 CREATE;
 #define OPERATE_ROLWORK                     34
 #define OPERATE_CMTWORK                     35
 #define OPERATE_ENDWORK                     36
+#define OPERATE_CLICK                       37
 #define OPERATE_EXEEXIT                     99
 
 #define OPERATE_DEFAULT                     (OPERATE_SELECT | OPERATE_UPDATE | OPERATE_DELETE | OPERATE_INSERT)

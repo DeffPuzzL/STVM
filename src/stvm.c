@@ -1859,6 +1859,7 @@ long    _lSelectField(SATvm *pstSavm, char *p, long lCount, TField *pstField, SQ
         memset(szField, 0, sizeof(szField));
         strncpy(szField, sfieldvalue(p, ",", i + 1), MAX_FIELD_LEN);
         strimall(szField);
+        strimabout(szField, "(", ")");
 
         if((!strcasecmp(szField, "count(*)") ||
             !strcasecmp(szField, "count(1)")))
@@ -2208,6 +2209,42 @@ long    _lCountSelect(SATvm *pstSavm, TIndex *pstIndex, char *pvData, bool bRmt)
 
     fprintf(stdout, "COUNT(*)\n");
     fprintf(stdout, "%zu\n", lSum);
+    fflush(stdout);
+    fprintf(stdout, "---(%ld) records selected, ep(%d), %s---\n", pstSavm->m_lEffect, 
+        pstSavm->m_lEType, sGetCostTime(-1 * lTime));
+
+    return RC_SUCC;
+}
+
+/*************************************************************************************************
+    description：execute SQL-click
+    parameters：
+    return：
+        RC_SUCC                            --success
+        RC_FAIL                            --failure
+  *************************************************************************************************/
+long    _lExeClick(SATvm *pstSavm, TIndex *pstIndex, char *pvData, bool bRmt)
+{
+    ulong   ulHits = 0;
+    long    lRet, lTime = lGetTiskTime();
+
+    pstSavm->pstVoid = (void *)pvData;
+    pstSavm->tblName = pstIndex->m_table;
+    pstSavm->lSize = pstIndex->m_lRowSize;
+    if(bRmt)
+        lRet = lTvmClick(pstSavm, &ulHits);
+    else
+        lRet = lClick(pstSavm, &ulHits);
+    if(lRet != RC_SUCC)
+    {
+        fprintf(stderr, "count table (%s) failure, %s\n", pstIndex->m_szTable, 
+            sGetTError(pstSavm->m_lErrno));
+        return RC_FAIL;
+    }
+    lTime -= lGetTiskTime();
+
+    fprintf(stdout, "HITSPOT\n");
+    fprintf(stdout, "%zu\n", ulHits);
     fflush(stdout);
     fprintf(stdout, "---(%ld) records selected, ep(%d), %s---\n", pstSavm->m_lEffect, 
         pstSavm->m_lEType, sGetCostTime(-1 * lTime));
@@ -2847,6 +2884,17 @@ long    _lParseSelect(SATvm *pstSavm, char *pszTable, char *pszField, char *pszW
         if(RC_SUCC != _lExeExtreme(pstSavm, &stIndex, pstRoot, pvWhere, bRmt))
             goto ERR_SELECT;
         
+        vDestroyFiled(pstRoot);
+        pstRoot = NULL;
+        TFree(pstField);
+        TFree(pvWhere);
+        return RC_SUCC;
+    }
+    else if(!strcasecmp(pszField, "click"))
+    {
+        if(RC_SUCC != _lExeClick(pstSavm, &stIndex, pvWhere, bRmt))
+            goto ERR_SELECT;
+
         vDestroyFiled(pstRoot);
         pstRoot = NULL;
         TFree(pstField);
@@ -4327,7 +4375,7 @@ void    vInitialCustom()
    //select nextval from SEQUENCE@SEQ_TEST
     snprintf(g_stCustom.m_pszWord, ALLOC_CMD_LEN, "SET,FROM,WHERE,COUNT(1),MAX,MIN,NEXTVAL,"
         "ORDER BY,GROUP BY,SEQUENCE@,SYS_TVM_FIELD,SYS_TVM_DOMAIN,SYS_TVM_SEQUE,TABLE,INTO,"
-        "ON,INFO,INDEX,VALUES,DEBUG [ON|OFF],SHOWMODE [ROW|COLUMN],SHOWSIZE [NUM],");
+        "ON,INFO,INDEX,VALUES,DEBUG [ON|OFF],SHOWMODE [ROW|COLUMN],SHOWSIZE [NUM],CLICK,");
     g_stCustom.m_lWord = lgetstrnum(g_stCustom.m_pszWord, ",");
  
     rl_attempted_completion_function = pMatchCompletion;

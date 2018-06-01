@@ -121,6 +121,7 @@ extern long       lTvmConnect(SATvm *pstSavm, char *pszIp, long lPort, int times
 extern long       lTvmTruncate(SATvm *pstSavm, TABLE t);
 extern long       lTvmGroup(SATvm *pstSavm, size_t *plOut, void **ppvOut);
 extern long       lTvmCount(SATvm *pstSavm, size_t *plCount);
+extern long       lTvmClick(SATvm *pstSavm, ulong *puHits);
 extern long       lTvmInsert(SATvm *pstSavm);
 extern long       lTvmSelect(SATvm *pstSavm, void *pvOut);
 extern long       lTvmQuery(SATvm *pstSavm, size_t *plOut, void **ppvOut);

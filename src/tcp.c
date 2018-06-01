@@ -1479,6 +1479,20 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
 
         lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
         return RC_SUCC;
+    case  OPERATE_CLICK:
+        if(RC_SUCC != lClick(pstSavm, (ulong *)pvData))
+        {
+            pstFace->m_lErrno = pstSavm->m_lErrno;
+            lData = sizeof(TFace);
+        }
+        else
+        {
+            lData = pstFace->m_lDLen + sizeof(ulong);
+            pstFace->m_lDLen = pstSavm->m_lEType;
+        }
+
+        lSendBuffer(pstCon->m_skSock, (void *)pstFace, lData);
+        return RC_SUCC;
     case  OPERATE_SELSEQ:
         if(RC_SUCC != lSelectSeque(pstSavm, (char *)pvData, (ulong *)pvData))
         {
@@ -3890,6 +3904,7 @@ void*    pParsePacket(SATvm *pstSavm, void *pstVoid, TFace *pstFace, void *pvBuf
     case OPERATE_TRCATE:
     case OPERATE_GROUP:
     case OPERATE_COUNT:
+    case OPERATE_CLICK:
     case OPERATE_EXTREM:
         memcpy(&pstCond->uFldcmp, pvData, sizeof(uint));
         for(i = 0, pvData += sizeof(uint); i < pstCond->uFldcmp; i ++)    
@@ -4966,6 +4981,73 @@ long    lTvmRenameTable(SATvm *pstSavm, TABLE to, TABLE tn)
         return RC_FAIL;
 
     pstSavm->m_lEffect = ((TFace *)pstRun->pstVoid)->m_lRows;
+    return RC_SUCC;
+}
+
+/*************************************************************************************************
+    description：API - click
+    parameters:
+        pstSavm                    --stvm handle
+        plcount                    --count
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    lTvmClick(SATvm *pstSavm, ulong *pulHits)
+{
+    RunTime *pstRun;
+    TFace   *pstFace;
+    uint    lWrite = sizeof(TFace);
+
+    if(!pstSavm || !pulHits)
+    {
+        pstSavm->m_lErrno = CONDIT_IS_NIL;
+        return RC_FAIL;
+    }
+
+    pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
+    if(!pstRun->pstVoid)
+    {
+        pstSavm->m_lErrno = DOM_NOT_INITL;
+        return RC_FAIL;
+    }
+
+    pstFace = (TFace *)pstRun->pstVoid;
+    pstFace->m_lFind  = pstSavm->lFind;
+    pstFace->m_lDLen  = pstSavm->lSize;
+    pstFace->m_lErrno = TVM_DONE_SUCC;
+    pstFace->m_enum   = OPERATE_CLICK;
+    pstFace->m_table  = pstSavm->tblName;
+
+    checkbuffer(pstSavm, pstRun, 1);
+    vBuildPacket(pstRun->pstVoid, pstSavm->pstVoid, &pstSavm->stCond, &lWrite);
+    vAppendCond(pstRun->pstVoid, &pstSavm->stUpdt, &lWrite);
+    pstFace->m_lRows  = lWrite - sizeof(TFace);
+
+    if(lWrite != lSendBuffer(pstSavm->m_skSock, (char *)pstRun->pstVoid, lWrite))
+    {
+        pstSavm->m_lErrno = SOCK_COM_EXCP;
+        return RC_FAIL;
+    }
+
+    if(sizeof(TFace) != lRecvBuffer(pstSavm->m_skSock, (char *)pstRun->pstVoid, sizeof(TFace)))
+    {
+        pstSavm->m_lErrno = SOCK_COM_EXCP;
+        return RC_FAIL;
+    }
+
+    pstSavm->m_lErrno = pstFace->m_lErrno;
+    if(0 != pstSavm->m_lErrno)
+        return RC_FAIL;
+
+    pstSavm->m_lEType  = pstFace->m_lDLen;
+    if(sizeof(ulong) != lRecvBuffer(pstSavm->m_skSock, (void *)pstRun->pstVoid, sizeof(ulong)))
+    {
+        pstSavm->m_lErrno = SOCK_COM_EXCP;
+        return RC_FAIL;
+    }
+
+    memcpy((void *)pulHits, pstRun->pstVoid, sizeof(ulong));
     return RC_SUCC;
 }
 

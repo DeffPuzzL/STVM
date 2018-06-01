@@ -5271,8 +5271,9 @@ long    _lSelectHash(SATvm *pstSavm, void *pvAddr, TABLE t, void *psvOut, size_t
                 return RC_FAIL;
             }
 
+            pstTruck->m_lTimes ++;
             *plData = pstList->m_lData;
-            pvData = pstTruck->m_pvData;
+            pvData  = pstTruck->m_pvData;
             if(FIRST_ROW & pstSavm->lFind)    break;
         }
 
@@ -5288,7 +5289,6 @@ long    _lSelectHash(SATvm *pstSavm, void *pvAddr, TABLE t, void *psvOut, size_t
 
     memcpy(psvOut, pvData, lGetRowSize(pstSavm->tblName));
     pthread_rwlock_unlock(prwLock);
-    pstTruck->m_lTimes ++;
     return RC_SUCC;
 }
 
@@ -5350,6 +5350,7 @@ long    _lSelectGroup(SATvm *pstSavm, void *pvAddr, TABLE t, void *psvOut, size_
                 return RC_FAIL;
             }
 
+            pstTruck->m_lTimes ++;
             *plData = pstList->m_lData;
             pvData = pstTruck->m_pvData;
             if(FIRST_ROW & pstSavm->lFind)    break;
@@ -5367,7 +5368,6 @@ long    _lSelectGroup(SATvm *pstSavm, void *pvAddr, TABLE t, void *psvOut, size_
 
     memcpy(psvOut, pvData, lGetRowSize(pstSavm->tblName));
     pthread_rwlock_unlock(prwLock);
-    pstTruck->m_lTimes ++;
 
     return RC_SUCC;
 }
@@ -5424,6 +5424,7 @@ long    _lSelectTruck(SATvm *pstSavm, void *pvAddr, TABLE t, void *psvOut, size_
 
         *plData = lOffset;
         lOffset+= lGetRowTruck(t);
+        pstTruck->m_lTimes ++;
         pvData  = pstTruck->m_pvData;
         if(FIRST_ROW & pstSavm->lFind)   break;
     }
@@ -5437,7 +5438,6 @@ long    _lSelectTruck(SATvm *pstSavm, void *pvAddr, TABLE t, void *psvOut, size_
 
     memcpy(psvOut, pvData, lGetRowSize(pstSavm->tblName));
     pthread_rwlock_unlock(prwLock);
-    pstTruck->m_lTimes ++;
 
     return RC_SUCC;
 }
@@ -5989,6 +5989,7 @@ long    _lQueryHash(SATvm *pstSavm, void *pvAddr, TABLE t, size_t *plOut, void *
             return RC_FAIL;
         }
 
+        pstTruck->m_lTimes ++;
         memcpy(*ppsvOut + (lPos - lGetRowSize(t)), pstTruck->m_pvData, lGetRowSize(t));
         if(SELF_POS_UNUSE == pstList->m_lNext)    break;
     }
@@ -6056,6 +6057,7 @@ long    _lQueryGroup(SATvm *pstSavm, void *pvAddr, TABLE t, size_t *plOut, void 
             return RC_FAIL;
         }
     
+        pstTruck->m_lTimes ++;
         memcpy(*ppsvOut + (lPos - lGetRowSize(t)), pstTruck->m_pvData, lGetRowSize(t));
         if(SELF_POS_UNUSE == pstList->m_lNext)    break;
     }
@@ -6110,6 +6112,7 @@ long    _lQueryTruck(SATvm *pstSavm, void *pvAddr, TABLE t, size_t *plOut, void 
             return RC_FAIL;
         }
 
+        pstTruck->m_lTimes ++;
         memcpy(*ppsvOut + (lPos - lGetRowSize(t)), pstTruck->m_pvData, lGetRowSize(t));
         lOffset += lGetRowTruck(t);
     }
@@ -9841,7 +9844,8 @@ long    _lClickGroup(SATvm *pstSavm, void *pvAddr, TABLE t, ulong *puHits)
                 return RC_FAIL;
             }
 
-            pvData = pstTruck->m_pvData;
+            pvData  = pstTruck->m_pvData;
+            *puHits = pstTruck->m_lTimes;
             if(FIRST_ROW & pstSavm->lFind)    break;
         }
 
@@ -9856,7 +9860,6 @@ long    _lClickGroup(SATvm *pstSavm, void *pvAddr, TABLE t, ulong *puHits)
     }
 
     pthread_rwlock_unlock(prwLock);
-    *puHits = pstTruck->m_lTimes;
 
     return RC_SUCC;
 }
@@ -9913,7 +9916,8 @@ long    _lClickHash(SATvm *pstSavm, void *pvAddr, TABLE t, ulong *puHits)
                 return RC_FAIL;
             }
 
-            pvData = pstTruck->m_pvData;
+            pvData  = pstTruck->m_pvData;
+            *puHits = pstTruck->m_lTimes;
             if(FIRST_ROW & pstSavm->lFind)    break;
         }
 
@@ -9928,7 +9932,6 @@ long    _lClickHash(SATvm *pstSavm, void *pvAddr, TABLE t, ulong *puHits)
     }
 
     pthread_rwlock_unlock(prwLock);
-    *puHits = pstTruck->m_lTimes;
     return RC_SUCC;
 }
 
@@ -9982,6 +9985,7 @@ long    _lClickTruck(SATvm *pstSavm, void *pvAddr, TABLE t, ulong *puHits)
         }
 
         lOffset+= lGetRowTruck(t);
+        *puHits = pstTruck->m_lTimes;
         pvData  = pstTruck->m_pvData;
         if(FIRST_ROW & pstSavm->lFind)   break;
     }
@@ -9994,7 +9998,6 @@ long    _lClickTruck(SATvm *pstSavm, void *pvAddr, TABLE t, ulong *puHits)
     }
 
     pthread_rwlock_unlock(prwLock);
-    *puHits = pstTruck->m_lTimes;
     return RC_SUCC;
 }
 
