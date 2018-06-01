@@ -1006,6 +1006,26 @@ long    lDefineTable(char *pszCreate, char *pszTable)
     return RC_SUCC;
 }
 
+/**************************************************************************************************
+    description：append table to tab list
+    parameters：
+    return：
+ **************************************************************************************************/
+void    vAppendTabList(char *pszTable)
+{
+    long    lLen = 0;
+
+    lLen = strlen(g_stCustom.m_pszWord); 
+    lLen += strlen(pszTable) + 1;
+    if(lLen > ALLOC_CMD_LEN)
+        return ;
+    strcat(g_stCustom.m_pszWord, supper(pszTable));
+    strcat(g_stCustom.m_pszWord, ",");
+
+    g_stCustom.m_lWord = lgetstrnum(g_stCustom.m_pszWord, ",");
+	return ;
+}
+
 /*************************************************************************************************
     description：create table by file
     parameters：
@@ -1067,7 +1087,7 @@ long    lCreateByFile(char *pszFile)
         return RC_FAIL;
 
     fprintf(stdout, "---(%s) was created ---\n", szTable);
-
+    vAppendTabList(szTable);
 
     TFree(pszCreate);
     return RC_SUCC;
@@ -3770,15 +3790,8 @@ void    vInitTableList(SATvm *pstSavm, bool bRmt)
         return ;
 
     for(i = 0, lRet = strlen(g_stCustom.m_pszWord); i < lRows; i ++)
-    {
-        lRet += strlen(pstIndex[i].m_szTable) + 1;
-        if(lRet > ALLOC_CMD_LEN)
-            break;
-        strcat(g_stCustom.m_pszWord, pstIndex[i].m_szTable);
-        strcat(g_stCustom.m_pszWord, ",");
-    }
+        vAppendTabList(pstIndex[i].m_szTable);
 
-    g_stCustom.m_lWord = lgetstrnum(g_stCustom.m_pszWord, ",");
     TFree(pstIndex);
     return ;
 }

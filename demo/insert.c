@@ -26,13 +26,14 @@ long    lInsertUserInfo()
     }
  
     memset(&stUser, 0, sizeof(dbUser));
-    stUser.acct_id = 10021;                              // 对结构体赋值
+//    stUser.acct_id = 10021;                              // 对结构体赋值
     strcpy(stUser.user_no,    "20180223");               // 对结构体赋值
     strcpy(stUser.user_type,  "1");                      // 对结构体赋值
     strcpy(stUser.user_nm,    "Savens Liu");             // 对结构体赋值
     strcpy(stUser.user_addr,  "China");                  // 对结构体赋值
     strcpy(stUser.user_phone, "18672911111");            // 对结构体赋值
     defineinit(pstSavm, stUser, TBL_USER_INFO);          // 绑定变量
+    decorate(pstSavm, dbUser, acct_id, FIELD_INCR);      // 自增llong型
  
     if(RC_SUCC != lInsert(pstSavm))      // 插入记录  
     {

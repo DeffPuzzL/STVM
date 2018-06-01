@@ -4,8 +4,9 @@ AR=ar
 LD=ld
 LN=ln
 #CC=cc -fPIC -O2 -Wno-unused-result -m64 -march=native
-CC=cc -fPIC -O2 -Wno-unused-result -march=native
-CO=-c -g -O2 -DMAX_INDEX_LEN=64 -DMAX_FILED_NUM=64 -Wno-unused-result 
+#CC=cc -fPIC -O2 -Wno-unused-result -march=native
+CC=cc -fPIC -Wno-unused-result 
+CO=-c -g -DMAX_INDEX_LEN=64 -DMAX_FILED_NUM=64 -Wno-unused-result 
 LDFLAG=-shared -g
 OUTLIB=../lib
 OUTBIN=../bin

@@ -1339,7 +1339,8 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
         else
         {
             lData = pstFace->m_lDLen + sizeof(TFace);
-            pstFace->m_lRows  = pstSavm->m_lEffect;
+            pstFace->m_lRows = pstSavm->m_lEffect;
+            pstFace->m_lDLen = pstSavm->m_lEType;
         }
 
         lSendBuffer(pstCon->m_skSock, (void *)pstFace, lData);
@@ -1347,8 +1348,12 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
     case  OPERATE_QUERY:
         if(RC_SUCC != lQuery(pstSavm, (size_t *)&pstFace->m_lRows, (void *)&pvOut))
             pstFace->m_lErrno = pstSavm->m_lErrno;
+        else
+        {
+            lData = pstFace->m_lDLen * pstFace->m_lRows;
+            pstFace->m_lDLen = pstSavm->m_lEType;
+        }
 
-        lData = pstFace->m_lDLen * pstFace->m_lRows;
         if(sizeof(TFace) != lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace)))
         {
             TFree(pvOut);
@@ -1359,14 +1364,29 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
         TFree(pvOut);
         return RC_SUCC;
     case  OPERATE_REPLACE:
+        pstSavm->m_bWork = pstCon->m_bWork;
+        pstSavm->m_pstWork = pstCon->m_pstWork;
+        if(RC_SUCC != lReplace(pstSavm, pvData))
+            pstFace->m_lErrno = pstSavm->m_lErrno;
+        else
+        {
+            pstFace->m_lRows = pstSavm->m_lEffect;
+            pstFace->m_lDLen = pstSavm->m_lEType;
+        }
+        pstCon->m_pstWork = pstSavm->m_pstWork;
+        lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
+        return RC_SUCC;
     case  OPERATE_UPDATE:
         pstSavm->m_bWork = pstCon->m_bWork;
         pstSavm->m_pstWork = pstCon->m_pstWork;
         if(RC_SUCC != lUpdate(pstSavm, pvData))
             pstFace->m_lErrno = pstSavm->m_lErrno;
         else
-            pstFace->m_lRows  = pstSavm->m_lEffect;
-        pstCon->m_pstWork =    pstSavm->m_pstWork;
+        {
+            pstFace->m_lRows = pstSavm->m_lEffect;
+            pstFace->m_lDLen = pstSavm->m_lEType;
+        }
+        pstCon->m_pstWork = pstSavm->m_pstWork;
         lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
         return RC_SUCC;
     case  OPERATE_DELETE:
@@ -1374,12 +1394,20 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
         pstSavm->m_pstWork = pstCon->m_pstWork;
         if(RC_SUCC != lDelete(pstSavm))
             pstFace->m_lErrno = pstSavm->m_lErrno;
+        else
+        {
+            pstFace->m_lDLen = pstSavm->m_lEType;
+            pstFace->m_lRows = pstSavm->m_lEffect;
+        }
         pstCon->m_pstWork = pstSavm->m_pstWork;
-        pstFace->m_lRows  = pstSavm->m_lEffect;
         lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
         return RC_SUCC;
-
     case  OPERATS_REPLACE:
+        pstSavm->m_bWork = pstCon->m_bWork;
+        pstSavm->m_pstWork = pstCon->m_pstWork;
+        if(RC_SUCC == lReplace(pstSavm, pvData))
+            pstCon->m_pstWork = pstSavm->m_pstWork;
+        return RC_SUCC;
     case  OPERAYS_UPDATE:
         pstSavm->m_bWork = pstCon->m_bWork;
         pstSavm->m_pstWork = pstCon->m_pstWork;
@@ -1405,7 +1433,7 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
             pstFace->m_lErrno = pstSavm->m_lErrno;
         else 
             pstFace->m_lRows  = pstSavm->m_lEffect;
-        pstCon->m_pstWork =    pstSavm->m_pstWork;
+        pstCon->m_pstWork = pstSavm->m_pstWork;
         lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
         return RC_SUCC;
     case  OPERATE_TRCATE:
@@ -1418,6 +1446,8 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
     case  OPERATE_COUNT:
         if(RC_SUCC != lCount(pstSavm, (size_t *)&pstFace->m_lRows))
             pstFace->m_lErrno = pstSavm->m_lErrno;
+        else
+            pstFace->m_lDLen = pstSavm->m_lEType;
 
         lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
         return RC_SUCC;
@@ -1431,7 +1461,8 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
         else
         {
             lData = pstFace->m_lDLen + sizeof(TFace);
-            pstFace->m_lRows  = pstSavm->m_lEffect;
+            pstFace->m_lRows = pstSavm->m_lEffect;
+            pstFace->m_lDLen = pstSavm->m_lEType;
         }
         lSendBuffer(pstCon->m_skSock, (void *)pstFace, lData);
         return RC_SUCC;
@@ -1479,8 +1510,12 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
     case  OPERATE_GROUP:
         if(RC_SUCC != lGroup(pstSavm, (size_t *)&pstFace->m_lRows, (void *)&pvOut))
             pstFace->m_lErrno = pstSavm->m_lErrno;
+        else
+        {
+            lData = pstFace->m_lDLen * pstFace->m_lRows;
+            pstFace->m_lDLen = pstSavm->m_lEType;
+        }
 
-        lData = pstFace->m_lDLen * pstFace->m_lRows;
         if(sizeof(TFace) != lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace)))
         {
             TFree(pvOut);
@@ -4002,6 +4037,7 @@ long    lTvmSelect(SATvm *pstSavm, void *pvOut)
         return RC_FAIL;
 
     pstSavm->m_lEffect = pstFace->m_lRows;
+    pstSavm->m_lEType  = pstFace->m_lDLen;
     if(pstSavm->lSize != lRecvBuffer(pstSavm->m_skSock, (char *)pvOut, pstSavm->lSize))
     {
         pstSavm->m_lErrno = SOCK_COM_EXCP;
@@ -4083,6 +4119,7 @@ long    lTvmQuery(SATvm *pstSavm, size_t *plOut, void **ppvOut)
 
     *plOut = pstFace->m_lRows;
     pstSavm->m_lEffect = pstFace->m_lRows;
+    pstSavm->m_lEType  = pstFace->m_lDLen;
     return RC_SUCC;
 }
 
@@ -4406,11 +4443,12 @@ long    lTvmDelete(SATvm *pstSavm)
         return RC_FAIL;
     }
 
-    pstSavm->m_lErrno = ((TFace *)pstRun->pstVoid)->m_lErrno;
+    pstSavm->m_lErrno = pstFace->m_lErrno;
     if(0 != pstSavm->m_lErrno)
         return RC_FAIL;
 
-    pstSavm->m_lEffect = ((TFace *)pstRun->pstVoid)->m_lRows;
+    pstSavm->m_lEffect = pstFace->m_lRows;
+    pstSavm->m_lEType  = pstFace->m_lDLen;
     return RC_SUCC;
 }
 
@@ -4474,11 +4512,12 @@ long    lTvmUpdate(SATvm *pstSavm, void *pvData)
         return RC_FAIL;
     }
 
-    pstSavm->m_lErrno = ((TFace *)pstRun->pstVoid)->m_lErrno;
+    pstSavm->m_lErrno = pstFace->m_lErrno;
     if(0 != pstSavm->m_lErrno)
         return RC_FAIL;
 
-    pstSavm->m_lEffect = ((TFace *)pstRun->pstVoid)->m_lRows;
+    pstSavm->m_lEffect = pstFace->m_lRows;
+    pstSavm->m_lEType  = pstFace->m_lDLen;
     return RC_SUCC;
 }
 
@@ -4528,7 +4567,7 @@ long    lTvmReplace(SATvm *pstSavm, void *pvData)
 
     vBuildPacket(pstRun->pstVoid, pstSavm->pstVoid, &pstSavm->stCond, &lWrite);
     vBuildPacket(pstRun->pstVoid, pvData, pstCond, &lWrite);
-    pstFace->m_lRows  = lWrite - sizeof(TFace);
+    pstFace->m_lRows = lWrite - sizeof(TFace);
 
     if(lWrite != lSendBuffer(pstSavm->m_skSock, (void *)pstRun->pstVoid, lWrite))
     {
@@ -4542,11 +4581,12 @@ long    lTvmReplace(SATvm *pstSavm, void *pvData)
         return RC_FAIL;
     }
 
-    pstSavm->m_lErrno = ((TFace *)pstRun->pstVoid)->m_lErrno;
+    pstSavm->m_lErrno = pstFace->m_lErrno;
     if(0 != pstSavm->m_lErrno)
         return RC_FAIL;
 
-    pstSavm->m_lEffect = ((TFace *)pstRun->pstVoid)->m_lRows;
+    pstSavm->m_lEffect = pstFace->m_lRows;
+    pstSavm->m_lEType  = pstFace->m_lDLen;
     return RC_SUCC;
 }
 
@@ -4682,6 +4722,7 @@ long    lTvmGroup(SATvm *pstSavm, size_t *plOut, void **ppvOut)
 
     *plOut = pstFace->m_lRows;
     pstSavm->m_lEffect = pstFace->m_lRows;
+    pstSavm->m_lEType  = pstFace->m_lDLen;
     return RC_SUCC;
 }
 
@@ -4742,6 +4783,7 @@ long    lTvmCount(SATvm *pstSavm, size_t *plCount)
         return RC_FAIL;
 
     *plCount = pstFace->m_lRows;
+    pstSavm->m_lEType = pstFace->m_lDLen;
     return RC_SUCC;
 }
 
@@ -4809,6 +4851,7 @@ long    lTvmExtreme(SATvm *pstSavm, void *pvOut)
     if(0 != pstSavm->m_lErrno)
         return RC_FAIL;
 
+    pstSavm->m_lEType = pstFace->m_lDLen;
     if(pstSavm->lSize != lRecvBuffer(pstSavm->m_skSock, (char *)pvOut, pstSavm->lSize))
     {
         pstSavm->m_lErrno = SOCK_COM_EXCP;

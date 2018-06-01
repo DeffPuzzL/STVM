@@ -1,6 +1,6 @@
 INCDIR= -I/usr/include -I$(HOME)/include -I./ -I./include -I../include
 LIBDIR= -L$(HOME)/lib -L../lib -lstvm  -lm -lc -ldl -lpthread
-CC=cc -fPIC
+CC=cc -fPIC -g
 CO=-c -pg
 OUTLIB=../lib
 OUTBIN=../bin
