@@ -33,7 +33,7 @@
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-long    lCreateQueue(SATvm *pstSavm, bool bCreate)
+long    lCreateQuemsg(SATvm *pstSavm, bool bCreate)
 {
     long    lQid;
 

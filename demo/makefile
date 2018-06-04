@@ -1,5 +1,6 @@
 INCDIR= -I/usr/include -I$(HOME)/include -I./ -I./include -I../include
-LIBDIR= -L$(HOME)/lib -L../lib -lstvm  -lm -lc -ldl -lpthread
+#LIBDIR= -L$(HOME)/lib -L../lib -lm -lc -ldl -lpthread -static -lstvm
+LIBDIR= -L$(HOME)/lib -L../lib -lstvm -lm -lc -ldl -lpthread 
 CC=cc -fPIC -g
 CO=-c -pg
 OUTLIB=../lib
@@ -7,6 +8,9 @@ OUTBIN=../bin
 
 OBJFILE=tree.o sem.o msg.o tcp.o str.o list.o conf.o
 CREATE=create
+QUEUE=queue
+PUSH=push
+POP=pop
 INSERT=insert
 SELECT=select
 QUERY=query
@@ -21,8 +25,12 @@ CLICK=click
 REPLACE=replace
 PRESSURE=press_demo
 
-all: $(CREATE) $(INSERT) $(SELECT) $(QUERY) $(DELETE) $(UPDATE) $(COUNT) $(GROUP) $(EXTREME) $(TRUNCATE) $(DROP) $(PRESSURE) $(CLICK) $(REPLACE) clean
+all: $(CREATE) $(INSERT) $(QUEUE) $(PUSH) $(POP) $(SELECT) $(QUERY) $(DELETE) $(UPDATE) $(COUNT) $(GROUP) $(EXTREME) $(TRUNCATE) $(DROP) $(PRESSURE) $(CLICK) $(REPLACE) clean
 $(CREATE): create.o
+	$(CC) -o $@ $< $(LIBDIR)
+$(PUSH): push.o
+	$(CC) -o $@ $< $(LIBDIR)
+$(POP): pop.o
 	$(CC) -o $@ $< $(LIBDIR)
 $(INSERT): insert.o
 	$(CC) -o $@ $< $(LIBDIR)
@@ -47,6 +55,8 @@ $(DROP): drop.o
 $(CLICK): click.o
 	$(CC) -o $@ $< $(LIBDIR)
 $(REPLACE): replace.o
+	$(CC) -o $@ $< $(LIBDIR)
+$(QUEUE): queue.o
 	$(CC) -o $@ $< $(LIBDIR)
 $(PRESSURE): press_demo.o
 	$(CC) -o $@ $< $(LIBDIR)

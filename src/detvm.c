@@ -104,7 +104,8 @@ void    vDebugTable(TABLE t, long eType)
         fprintf(stdout, "TABLE:%9u, extern:%10ld, NAME:%s\t\nSHTree:%8ld, SHList:%10ld, "
             "TblDef:%11ld\nGroup:%9ld, MaxRow:%10ld, Valid:%12ld\nlNodeNil:%6ld, lIType:%10d, "
             "Table:%12ld\nIdxLen:%8ld, TreePos:%9ld, TreeRoot:%9ld\nGrpLen:%8ld, GroupPos:%8ld, "
-            "GroupRoot:%8ld\nData:%10ld, ReSize:%10ld, Truck:%12ld\nListPos:%7ld, ListOfs:%9ld\n", 
+            "GroupRoot:%8ld\nData:%10ld, ReSize:%10ld, Truck:%12ld\nListPos:%7ld, ListOfs:%9ld, "
+            "ExSeQ:%12ld\n", 
             ((TblDef *)pGetTblDef(t))->m_table, ((TblDef *)pGetTblDef(t))->m_lExtern, 
             ((TblDef *)pGetTblDef(t))->m_szTable, sizeof(SHTree), sizeof(SHList), sizeof(TblDef), 
             ((TblDef *)pGetTblDef(t))->m_lGroup, ((TblDef *)pGetTblDef(t))->m_lMaxRow, 
@@ -115,7 +116,7 @@ void    vDebugTable(TABLE t, long eType)
             ((TblDef *)pGetTblDef(t))->m_lGroupPos, ((TblDef *)pGetTblDef(t))->m_lGroupRoot, 
             ((TblDef *)pGetTblDef(t))->m_lData, ((TblDef *)pGetTblDef(t))->m_lReSize, 
             ((TblDef *)pGetTblDef(t))->m_lTruck, ((TblDef *)pGetTblDef(t))->m_lListPos, 
-            ((TblDef *)pGetTblDef(t))->m_lListOfs);
+            ((TblDef *)pGetTblDef(t))->m_lListOfs, ((TblDef *)pGetTblDef(t))->m_lExSeQ);
         fprintf(stdout, "--------------------------------------------------------------------"
             "----------\n");
 

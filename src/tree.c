@@ -43,12 +43,11 @@ extern long       _lRenameTableByRt(SATvm *pstSavm, TABLE to, TABLE tn);
 /*************************************************************************************************
     macro
  *************************************************************************************************/
-#define Tremohold(p,r)  if(p->m_bHold) r->m_lState = RESOURCE_ABLE;
 
 /*************************************************************************************************
     Error message definition
  *************************************************************************************************/
-static char    tvmerr[100][MAX_INDEX_LEN] = {
+static char    tvmerr[128][MAX_INDEX_LEN] = {
     "completed successfully",
     "sever exception",
     "index field values is null",
@@ -146,6 +145,10 @@ static char    tvmerr[100][MAX_INDEX_LEN] = {
     "extreme set decorate error",
     "group set decorate error",
     "the table of field is missing",
+    "queue waiting for timeout",
+    "queue waiting for failure",
+    "created queue is too big",
+    "table does not support this operation",
     "",
 };
 
@@ -1099,7 +1102,11 @@ void    vHoldRelease(SATvm *pstSavm)
         TFree(pstRun->pstVoid);
 
         if(pstRun->m_pvAddr)
+        {
+            if(TYPE_MQUEUE == pstRun->m_lType && ((TblDef *)pstRun->m_pvAddr)->m_lGroup > 0)
+                ((TblDef *)pstRun->m_pvAddr)->m_lGroup --; // process exit
             shmdt(pstRun->m_pvAddr);
+        }
         pstRun->m_pvAddr = NULL;
         pstRun->m_bAttch = false;
     }
@@ -1133,7 +1140,11 @@ void    _vTblRelease(SATvm *pstSavm, TABLE t, bool bHold)
     pstRun->m_pvCurAddr = NULL;
 
     if(pstRun->m_pvAddr)
+    {
+        if(TYPE_MQUEUE == pstRun->m_lType && ((TblDef *)pstRun->m_pvAddr)->m_lGroup > 0)
+            ((TblDef *)pstRun->m_pvAddr)->m_lGroup --; // process exit
         shmdt(pstRun->m_pvAddr);
+    }
     pstRun->m_pvAddr = NULL;
     pstRun->m_bAttch = false;
 }
@@ -1575,7 +1586,9 @@ long    lInitSATvm(SATvm *pstSavm, TABLE t)
     pstRun->m_shmID    = stIndex.m_shmID;
     pstRun->m_semID    = stIndex.m_semID;
     pstRun->m_lLocal   = stIndex.m_lLocal;
+    pstRun->m_lType    = stIndex.m_lType;
     pstRun->m_lRowSize = stIndex.m_lRowSize;
+
     return RC_SUCC;
 }
 
@@ -1835,7 +1848,8 @@ void*    pInitMemTable(SATvm *pstSavm, TABLE t)
     }
 
     pstRun->m_bAttch = true;
-
+    if(TYPE_MQUEUE == pstRun->m_lType)
+        ((TblDef *)pstRun->m_pvAddr)->m_lGroup ++; // process join 
     memcpy((void *)pGetTblDef(t), pstRun->m_pvAddr, sizeof(TblDef));
 
     if(pstSavm->lSize != lGetRowSize(t))
@@ -8044,7 +8058,8 @@ long    lRegisterTable(SATvm *pstSavm, RunTime *pstRun, TABLE t, long lType)
     TIndex  stIndex;
     TBoot   *pstBoot = (TBoot *)pBootInitial();
 
-    if(TYPE_CLIENT != lType)    return RC_SUCC;
+    if(TYPE_SYSTEM == lType || TYPE_INCORE == lType)
+        return RC_SUCC;
 
     if(RC_SUCC != lInitSATvm(pstSavm, SYS_TVM_INDEX))
         return RC_FAIL;
@@ -8126,6 +8141,67 @@ long    _lCustomTable(SATvm *pstSavm, TABLE t, size_t lRow, bool bCreate, long l
     vTblDisconnect(pstSavm, t);
 
     if(RC_SUCC != lRegisterTable(pstSavm, pstRun, t, lType))
+    {
+        shmctl(pstRun->m_shmID, IPC_RMID, NULL);
+        return RC_FAIL;
+    }
+
+    return RC_SUCC;
+}
+
+/*************************************************************************************************
+    description：create queue 
+    parameters:
+        pstSavm                    --stvm handle
+        t                          --table 
+        lRow                       --table maxrows
+        bCreate                    --create type
+        lType                      --table type
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    _lCreateQueue(SATvm *pstSavm, TABLE t, size_t lRow, size_t lSize, char *pszTable, 
+            char *pszNode, bool bCover)
+{
+    RWAttr  attr;
+    RunTime *pstRun = NULL;
+    RWLock  *prwLock = NULL;
+
+    if(!pstSavm || lRow <= 0)
+    {
+        pstSavm->m_lErrno = CONDIT_IS_NIL;
+        return RC_FAIL;
+    }
+   
+    if((lRow >> (sizeof(int) * 8 - 1)) > 0)
+    {
+        pstSavm->m_lErrno = MQUE_CRTE_BIG;
+        return RC_FAIL;
+    } 
+
+    vInitTblDef(t);
+    pstSavm->tblName = t;
+    ((TblDef *)pGetTblDef(t))->m_lIType = bCover;
+    ((TblDef *)pGetTblDef(t))->m_table = t; 
+    ((TblDef *)pGetTblDef(t))->m_lReSize = lSize;
+    ((TblDef *)pGetTblDef(t))->m_lTruck = lSize + sizeof(SHTruck);
+    strncpy(((TblDef *)pGetTblDef(t))->m_szPart, pszNode, MAX_FIELD_LEN); 
+    strncpy(((TblDef *)pGetTblDef(t))->m_szTable, pszTable, MAX_FIELD_LEN); 
+    ((TblDef *)pGetTblDef(t))->m_lTable = lInitialTable(t, lRow);
+    if(NULL == (pstRun = (RunTime *)pCreateBlock(pstSavm, t, ((TblDef *)pGetTblDef(t))->m_lTable, 
+        false)))
+        return RC_FAIL;
+
+    memcpy(pstRun->m_pvAddr, (void *)pGetTblDef(t), sizeof(TblDef));
+    prwLock = (RWLock *)pGetRWLock(pstRun->m_pvAddr);
+    pthread_rwlockattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+    pthread_rwlock_init(prwLock, &attr);
+
+    memset(pstRun->m_pvAddr + lGetTblData(t), 0, lGetTableSize(t) - lGetTblData(t));
+    vTblDisconnect(pstSavm, t);
+
+    if(RC_SUCC != lRegisterTable(pstSavm, pstRun, t, TYPE_MQUEUE))
     {
         shmctl(pstRun->m_shmID, IPC_RMID, NULL);
         return RC_FAIL;
@@ -8661,6 +8737,22 @@ long    lCustomTable(SATvm *pstSavm, TABLE t, size_t lRow, TblDef *pstDef)
 }
 
 /*************************************************************************************************
+    description：API - CreateQueue
+    parameters:
+        pstSavm                    --stvm handle
+        t                          --table 
+        lRow                       --table maxrows
+        pfCreateFunc               --table field define
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    lCircleQueue(SATvm *pstSavm, TABLE t, size_t lRow, size_t lSize, char *pszTable, char *node)
+{
+    return _lCreateQueue(pstSavm, t, lRow, lSize, pszTable, node, false);
+}
+
+/*************************************************************************************************
     description：API - lDropTable
     parameters:
         pstSavm                    --stvm handle
@@ -8679,7 +8771,6 @@ long    lDropTable(SATvm *pstSavm, TABLE t)
     pstSavm->bSearch = TYPE_SYSTEM;
     conditinit(pstSavm, stIndex, SYS_TVM_INDEX)
     conditnum(pstSavm, stIndex, m_table, t)
-    conditnum(pstSavm, stIndex, m_lType, TYPE_CLIENT)
     if(RC_SUCC != lSelect(pstSavm, (void *)&stIndex))
         return RC_FAIL;
 
@@ -8688,7 +8779,6 @@ long    lDropTable(SATvm *pstSavm, TABLE t)
     {
         conditinit(pstSavm, stIndex, SYS_TVM_INDEX)
         conditnum(pstSavm, stIndex, m_table, t)
-        conditnum(pstSavm, stIndex, m_lType, TYPE_CLIENT)
         if(RC_SUCC != lDelete(pstSavm))
             return RC_FAIL;
 
@@ -8713,8 +8803,14 @@ long    lDropTable(SATvm *pstSavm, TABLE t)
 
     conditinit(pstSavm, stIndex, SYS_TVM_INDEX)
     conditnum(pstSavm, stIndex, m_table, t)
-    conditnum(pstSavm, stIndex, m_lType, TYPE_CLIENT)
     if(RC_SUCC != lDelete(pstSavm))    return RC_FAIL;
+
+    if(TYPE_MQUEUE == pstRun->m_lType)
+    {
+        memset(pstRun, 0, sizeof(RunTime));
+        pstSavm->m_lEffect = 1;
+        return RC_SUCC;
+    }
 
     // Delete the field table
     if(RC_SUCC != lInitSATvm(pstSavm, SYS_TVM_FIELD))
@@ -9132,7 +9228,14 @@ long    lGetTblField(TABLE t, size_t *plOut, TField **ppstField)
     
     conditinit(pstSavm, stField, SYS_TVM_FIELD)
     conditnum(pstSavm, stField, m_table, t)
-    return lQuery(pstSavm, plOut, (void **)ppstField);
+    if(RC_SUCC != lQuery(pstSavm, plOut, (void **)ppstField))
+    {
+        if(NO_DATA_FOUND == pstSavm->m_lErrno)
+            pstSavm->m_lErrno = FIELD_NOT_DEF;
+        return RC_FAIL;
+    }
+
+    return RC_SUCC;
 }
 
 /*************************************************************************************************

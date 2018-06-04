@@ -25,6 +25,7 @@
 
 typedef pthread_rwlock_t     RWLock;
 typedef pthread_rwlockattr_t RWAttr;
+typedef struct timespec      Timesp;
 typedef unsigned    int      TABLE;
 typedef long        long     llSEQ;
 typedef long                 (*TCREATE)(TABLE t);
@@ -154,6 +155,7 @@ typedef long                 CREATE;
 #define TYPE_INCORE                         0x02
 #define TYPE_CLIENT                         0x03        //  custom
 #define TYPE_KEYVAL                         0x04 
+#define TYPE_MQUEUE                         0x05        //  custom
 #define TVM_NODE_INFO                       "localhost"
 #define TVM_RUNCFG_TAG                      "\x01\x33\xC8\x48"
 
@@ -189,10 +191,13 @@ typedef long                 CREATE;
 #define IS_TRUCK_NRML(p)                    ((p)->m_chTag == DATA_TRUCK_NRML)
 #define IS_TRUCK_LOCK(p)                    ((p)->m_chTag == DATA_TRUCK_LOCK)
 #define SET_DATA_TRUCK(p, type)             ((p)->m_chTag =  type)
-#define TFree(p)                             if(p) { free(p); p = NULL; }
-#define TFgrp(p)                             do{vDeleteRowgrp(p);p = NULL;}while(0);
-#define TFlst(p)                             do{vDestroyList(p);p = NULL;}while(0);
-#define TClose(f)                            if(f) { fclose(f); f = NULL; }
+#define TFree(p)                            if(p) { free(p); p = NULL; }
+#define TFgrp(p)                            do{vDeleteRowgrp(p);p = NULL;}while(0);
+#define TFlst(p)                            do{vDestroyList(p);p = NULL;}while(0);
+#define TClose(f)                           if(f) { fclose(f); f = NULL; }
+
+#define Futex(a,o,v,t)                      syscall(SYS_futex, a, o, v, t, NULL, 0)
+#define Tremohold(p,r)                      if(p->m_bHold) r->m_lState = RESOURCE_ABLE;
 
 /*************************************************************************************************
     错误码定义区
@@ -294,6 +299,10 @@ typedef long                 CREATE;
 #define EXTRE_SET_ERR                       94          // extreme set decorate error
 #define GROUP_SET_ERR                       95          // group set decorate error
 #define CMM_TABLE_MIS                       96          // the table of field is missing
+#define MQUE_WAIT_TMO                       97          // queue waiting for timeout
+#define MQUE_WAIT_ERR                       98          // queue waiting for failure
+#define MQUE_CRTE_BIG                       99          // created queue is too big
+#define NOT_SUPPT_OPT                      100          // table does not support this operation
 
 /*************************************************************************************************
      创建表宏函数
@@ -316,6 +325,7 @@ typedef long                 CREATE;
                                     return RC_FAIL;
 #define FINISH                  return RC_SUCC;
 
+#define lCreateQueue(p,t,r,s,n) lCircleQueue(p, t, r, s, #t, n)
 /*************************************************************************************************
     Field assignment
  *************************************************************************************************/
@@ -497,7 +507,7 @@ typedef struct __SQL_FIELD
 typedef struct  __SYS_TVM_INDEX
 {
     TABLE   m_table;                          //  table
-    long    m_lType;                          //  table type
+    uint    m_lType;                          //  table type
     char    m_szTable[MAX_FIELD_LEN];         //  table name
     char    m_szPart[MAX_FIELD_LEN];          //  partition name
     char    m_szOwner[MAX_FIELD_LEN];         //  owner
@@ -588,6 +598,7 @@ typedef struct  __TVM_RUNTIME
     void    *pstVoid;
     uint    m_lState;
     uint    m_lLocal;
+    uint    m_lType;
     long    m_shmID;                          //  Memory Key
     long    m_semID;                          //  semaphore key
     long    m_lRowSize;                       //  Record block size
@@ -725,7 +736,7 @@ extern    long    lMakeConfig(char *pszFile);
 extern    long     lGetQueueNum(SATvm *pstSavm, long lQid);
 extern    long     lQueueMaxByte(SATvm *pstSavm, long lQid);
 extern    long     lQueueRcvTime(SATvm *pstSavm, long lQid);
-extern    long     lCreateQueue(SATvm *pstSavm, bool bCreate);
+extern    long     lCreateQuemsg(SATvm *pstSavm, bool bCreate);
 extern    long     lOperateSems(SATvm *pstSavm, long semID, long lSems, Benum evp);
 extern    long     lEventWrite(SATvm *pstSavm, long lQid, void *psvData, long lSize);
 extern    long     lCreateSems(SATvm *pstSavm, RunTime *pstRun, long lSems, long lValue);
@@ -779,6 +790,7 @@ extern    long     lSelectSeque(SATvm *pstSavm, char *pszSQName, ulong *pulNumbe
 extern    long     lSetSequence(SATvm *pstSavm, char *pszSQName, ulong uStart);
 extern    long     lCustomTable(SATvm *pstSavm, TABLE t, size_t lRow, TblDef *pstDef);
 extern    long     lCreateTable(SATvm *pstSavm, TABLE t, size_t lRow, TCREATE pfCreateFunc);
+extern    long     lCircleQueue(SATvm *pstSavm, TABLE t, size_t lRow, size_t lSize, char *p, char *n);
 extern    long     lInsertTrans(SATvm *pstSavm, size_t *plOffset, llSEQ *pllSeq);
 
 
@@ -793,6 +805,11 @@ extern    long     lClick(SATvm *pstSavm, ulong *puHits);
 extern    long     lExtreme(SATvm *pstSavm, void *psvOut);
 extern    long     lGroup(SATvm *pstSavm, size_t *plOut, void **ppsvOut);
 extern    long     lQuery(SATvm *pstSavm, size_t *plOut, void **ppsvOut);
+
+extern    long     lPops(SATvm *pstSavm, size_t lExpect, Timesp *tm, size_t *plOut, void **ppsvOut);
+extern    long     lPop(SATvm *pstSavm, void *pvOut);
+extern    long     lPushs(SATvm *pstSavm, size_t *plOut, void **ppsvOut);
+extern    long     lPush(SATvm *pstSavm);
 
 extern    long     lTableDeclare(SATvm *pstSavm);
 extern    long     lTableFetch(SATvm *pstSavm, void *psvOut);

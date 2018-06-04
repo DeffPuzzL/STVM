@@ -3888,7 +3888,7 @@ long    lExecuteSQL(SATvm *pstSavm, char *pszSQL)
             sGetTError(pstSavm->m_lErrno));
         return RC_SUCC;
     }
-    else if(!strcasecmp(pszSQL, "show tables"))
+    else if(!strcasecmp(pszSQL, "show table"))
         return lShowTables(pstSavm);    
     else if(!strcasecmp(pszSQL, "show info"))
     {

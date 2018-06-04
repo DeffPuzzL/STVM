@@ -54,6 +54,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/inotify.h>
+#include <linux/futex.h>
 #include <strings.h>
 #include <iconv.h>
 #include <dlfcn.h>
