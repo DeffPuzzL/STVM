@@ -332,17 +332,18 @@ typedef long                 CREATE;
 #define defineinit(p,s,t)       do{ \
                                    p->stCond.uFldcmp = 0; \
                                    p->stUpdt.uFldcmp = 0; \
-                                   p->lSize = sizeof(s); \
+                                   p->lFind = 0;  \
                                    p->tblName = t; \
+                                   p->lSize = sizeof(s); \
                                    p->pstVoid = (void *)&(s);  \
                                 }while(0);
 
 #define conditinit(p,s,t)       do{ \
                                    p->stCond.uFldcmp = 0; \
                                    p->stUpdt.uFldcmp = 0; \
-                                   p->lSize = sizeof(s); \
-                                   p->tblName = t; \
                                    p->lFind = 0;  \
+                                   p->tblName = t; \
+                                   p->lSize = sizeof(s); \
                                    memset(&(s), 0, p->lSize); \
                                    p->pstVoid = (void *)&(s);  \
                                 }while(0);
@@ -355,6 +356,21 @@ typedef long                 CREATE;
                                    p->tblName = t; \
                                    p->pstVoid = NULL;  \
                                 }while(0);
+
+#define queueinit(p,v,t)       do{ \
+                                   p->lSize = sizeof(v); \
+                                   p->tblName = t; \
+                                   memset(&(v), 0, p->lSize); \
+                                   p->pstVoid = (void *)&v;  \
+                                }while(0);
+
+#define queuerset(p,v,l,t)     do{ \
+                                   p->lSize = l; \
+                                   p->tblName = t; \
+                                   p->pstVoid = (void *)v;  \
+                                }while(0);
+
+#define queuebind(p,v,l,t)      queuerset(p,v,sizeof(l),t)
 
 #define stringsetv(p,s,f,...)   vSetCodField(&p->stCond, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
                                 snprintf((s).f, sizeof((s).f), __VA_ARGS__);
@@ -675,9 +691,6 @@ extern "C" {
 extern    char*    sGetLog();
 extern    char*    sGetNode();
 extern    void*    pGetBoot();
-extern    void*    pGetSATvm();
-extern    void*    pCloneSATvm();
-extern    void     vCloneFree(SATvm *pstSavm);
 extern    long     lDefaultBoot();
 extern    TBoot*   pBootInitial();
 extern    size_t   lGetTblRow(TABLE t);
@@ -729,6 +742,16 @@ extern    long     lGetTblIndex(SATvm *pstSavm, char *pszTable, char *pszPart, T
  *************************************************************************************************/
 extern    long    lUnmakeConfig(char *pszFile);
 extern    long    lMakeConfig(char *pszFile);
+
+/*************************************************************************************************
+    stvm handle
+ *************************************************************************************************/
+extern    void*    pGetSATvm();
+
+// ptrhead use
+extern    void*    pCloneSATvm();
+extern    void     vCloneFree(SATvm *pstSavm);
+extern    void     vCloneQueue(SATvm *pstSovm, TABLE t);
 
 /*************************************************************************************************
     IPC Message and semaphore

@@ -456,6 +456,34 @@ char*    pGetIndex(FdCond *pstCond, long lIdx, TblKey *pstKey, void *psvData, ch
 }
 
 /*************************************************************************************************
+    description：set number of current attaches
+    parameters:
+        pstSavm                    --stvm handle
+        t                          --table
+    return:
+        void*                      --success
+ *************************************************************************************************/
+void    vSetQueueAttch(RunTime *pstRun, long lRevise)
+{
+    struct shmid_ds ds;
+
+    if(TYPE_MQUEUE == pstRun->m_lType || pstRun->m_pvAddr) 
+        return ;
+
+    memset(&ds, 0, sizeof(struct shmid_ds));
+    if(0 != shmctl(pstRun->m_shmID, IPC_STAT, &ds))
+    {
+        ds.shm_nattch = 1;
+        return ;
+    }
+
+    ds.shm_nattch = (ds.shm_nattch + lRevise) < 0 ? 1 : (ds.shm_nattch + lRevise);
+    ((TblDef *)pstRun->m_pvAddr)->m_lGroup = ds.shm_nattch;
+
+    return ;
+}
+
+/*************************************************************************************************
     description：get stvm handle
     parameters:
     return:
@@ -464,6 +492,23 @@ char*    pGetIndex(FdCond *pstCond, long lIdx, TblKey *pstKey, void *psvData, ch
 void*   pGetSATvm()
 {
     return &g_stSavm;
+}
+
+/*************************************************************************************************
+    description：clone stvm handle by thread
+    parameters:
+    return:
+       void*
+  *************************************************************************************************/
+void    vCloneQueue(SATvm *pstSovm, TABLE t)
+{
+    RunTime  *pstRun = NULL;
+
+    if(!pstSovm || NULL == (pstRun = (RunTime *)pGetRunTime(pstSovm, t)))
+        return ;
+
+    vSetQueueAttch(pstRun, 1);
+    return ;
 }
 
 /*************************************************************************************************
@@ -1103,8 +1148,7 @@ void    vHoldRelease(SATvm *pstSavm)
 
         if(pstRun->m_pvAddr)
         {
-            if(TYPE_MQUEUE == pstRun->m_lType && ((TblDef *)pstRun->m_pvAddr)->m_lGroup > 0)
-                ((TblDef *)pstRun->m_pvAddr)->m_lGroup --; // process exit
+            vSetQueueAttch(pstRun, -1);
             shmdt(pstRun->m_pvAddr);
         }
         pstRun->m_pvAddr = NULL;
@@ -1141,8 +1185,7 @@ void    _vTblRelease(SATvm *pstSavm, TABLE t, bool bHold)
 
     if(pstRun->m_pvAddr)
     {
-        if(TYPE_MQUEUE == pstRun->m_lType && ((TblDef *)pstRun->m_pvAddr)->m_lGroup > 0)
-            ((TblDef *)pstRun->m_pvAddr)->m_lGroup --; // process exit
+        vSetQueueAttch(pstRun, -1);
         shmdt(pstRun->m_pvAddr);
     }
     pstRun->m_pvAddr = NULL;
@@ -1848,8 +1891,7 @@ void*    pInitMemTable(SATvm *pstSavm, TABLE t)
     }
 
     pstRun->m_bAttch = true;
-    if(TYPE_MQUEUE == pstRun->m_lType)
-        ((TblDef *)pstRun->m_pvAddr)->m_lGroup ++; // process join 
+    vSetQueueAttch(pstRun, 0);
     memcpy((void *)pGetTblDef(t), pstRun->m_pvAddr, sizeof(TblDef));
 
     if(pstSavm->lSize != lGetRowSize(t))
@@ -2107,7 +2149,7 @@ long    lInsertField(SATvm *pstSavm, TABLE t)
     if(NULL == (pstSavm = (SATvm *)pInitSATvm(SYS_TVM_FIELD)))
         return RC_FAIL;
 
-    defineinit(pstSavm, stField, SYS_TVM_FIELD)
+    conditbind(pstSavm, stField, SYS_TVM_FIELD)
     for(i = 0; i < lIdx; i ++)
     {
         memset(&stField, 0, sizeof(TField));
@@ -8490,7 +8532,7 @@ long    lInitDomain(SATvm *pstSavm)
     if(RC_SUCC != lGetDomainIndex(pstSavm, &lCount, &pstIndex))
         return RC_FAIL;
 
-    defineinit(pstSavm, pstIndex[i], SYS_TVM_INDEX)
+    conditbind(pstSavm, pstIndex[i], SYS_TVM_INDEX)
     for(i = 0; i < lCount; i ++)
     {
         pstIndex[i].m_lValid = 0;
@@ -8517,7 +8559,7 @@ long    lInitDomain(SATvm *pstSavm)
     {
         pstDomain[i].m_lStatus = RESOURCE_STOP;
 
-        defineinit(pstSavm, pstDomain[i], SYS_TVM_DOMAIN)
+        conditbind(pstSavm, pstDomain[i], SYS_TVM_DOMAIN)
         if(RC_SUCC != lInsert(pstSavm))
         {
             TFree(pstDomain);
@@ -8610,7 +8652,7 @@ long    lStartupTvm(TBoot *pstBoot)
         return RC_FAIL;
     */
 
-    defineinit(pstSavm, stIndex, SYS_TVM_INDEX)
+    conditbind(pstSavm, stIndex, SYS_TVM_INDEX)
     if(RC_SUCC != lInsert(pstSavm))
         return RC_FAIL;
 
@@ -8635,7 +8677,7 @@ long    lStartupTvm(TBoot *pstBoot)
     strncpy(stIndex.m_szPart, pstBoot->m_szNode, sizeof(stIndex.m_szPart));
     strncpy(stIndex.m_szTable, sGetTableName(SYS_TVM_FIELD), sizeof(stIndex.m_szTable));
     
-    defineinit(pstSavm, stIndex, SYS_TVM_INDEX)
+    conditbind(pstSavm, stIndex, SYS_TVM_INDEX)
     if(RC_SUCC != lInsert(pstSavm))
         return RC_FAIL;
 
@@ -8663,7 +8705,7 @@ long    lStartupTvm(TBoot *pstBoot)
     strncpy(stIndex.m_szPart, pstBoot->m_szNode, sizeof(stIndex.m_szPart));
     strncpy(stIndex.m_szTable, sGetTableName(SYS_TVM_DOMAIN), sizeof(stIndex.m_szTable));
     
-    defineinit(pstSavm, stIndex, SYS_TVM_INDEX)
+    conditbind(pstSavm, stIndex, SYS_TVM_INDEX)
     if(RC_SUCC != lInsert(pstSavm))
         return RC_FAIL;
 
@@ -8691,7 +8733,7 @@ long    lStartupTvm(TBoot *pstBoot)
     strncpy(stIndex.m_szPart, pstBoot->m_szNode, sizeof(stIndex.m_szPart));
     strncpy(stIndex.m_szTable, sGetTableName(SYS_TVM_SEQUE), sizeof(stIndex.m_szTable));
     
-    defineinit(pstSavm, stIndex, SYS_TVM_INDEX)
+    conditbind(pstSavm, stIndex, SYS_TVM_INDEX)
     if(RC_SUCC != lInsert(pstSavm))
         return RC_FAIL;
 
