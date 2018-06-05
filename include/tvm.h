@@ -97,7 +97,10 @@ typedef long                 CREATE;
 #define OPERATE_ROLWORK                     34
 #define OPERATE_CMTWORK                     35
 #define OPERATE_ENDWORK                     36
-#define OPERATE_CLICK                       37
+#define OPERATE_CLICK                       45
+#define OPERATE_QUEPUSH                     46
+#define OPERATE_QUEPOP                      47
+#define OPERATE_QUEPOPS                     48
 #define OPERATE_EXEEXIT                     99
 
 #define OPERATE_DEFAULT                     (OPERATE_SELECT | OPERATE_UPDATE | OPERATE_DELETE | OPERATE_INSERT)
@@ -829,7 +832,8 @@ extern    long     lExtreme(SATvm *pstSavm, void *psvOut);
 extern    long     lGroup(SATvm *pstSavm, size_t *plOut, void **ppsvOut);
 extern    long     lQuery(SATvm *pstSavm, size_t *plOut, void **ppsvOut);
 
-extern    long     lPops(SATvm *pstSavm, size_t lExpect, Timesp *tm, size_t *plOut, void **ppsvOut);
+// queue interface
+extern    long     lPopup(SATvm *pstSavm, size_t lExpect, time_t lTime, size_t *plOut, void **ppsvOut);
 extern    long     lPop(SATvm *pstSavm, void *pvOut);
 extern    long     lPushs(SATvm *pstSavm, size_t *plOut, void **ppsvOut);
 extern    long     lPush(SATvm *pstSavm);

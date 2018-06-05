@@ -141,6 +141,11 @@ extern long       lAsyInsert(SATvm *pstSavm);
 extern long       lAsyDelete(SATvm *pstSavm);
 extern long       lAsyUpdate(SATvm *pstSavm, void *pvData);
 extern long       lAsyReplace(SATvm *pstSavm, void *pvData);
+
+// queue interface
+extern long       lTvmPush(SATvm *pstSavm);
+extern long       lTvmPop(SATvm *pstSavm, void *pvOut);
+extern long       lTvmPopup(SATvm *pstSavm, size_t lExpect, time_t lTime, size_t *plOut, void **ppsvOut);
 #ifdef __cplusplus
 }
 #endif

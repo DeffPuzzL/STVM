@@ -24,6 +24,10 @@
 /************************************************************************************************
    function
  ************************************************************************************************/
+extern long       _lPushByRt(SATvm *pstSavm);
+extern long       _lPopByRt(SATvm *pstSavm, void *psvOut);
+extern long       _lPopupByRt(SATvm *pstSavm, size_t lExp, time_t lTime, size_t *plOut, void **pp);
+
 /*************************************************************************************************
     description：push data to queue
     parameters:
@@ -60,6 +64,7 @@ long    _lPush(SATvm *pstSavm, void *pvAddr)
     memcpy(ps->m_pvData, pstSavm->pstVoid, pv->m_lReSize);
     SET_DATA_TRUCK(ps, DATA_TRUCK_NRML);
     __sync_add_and_fetch(&pv->m_lValid, 1);
+    pstSavm->m_lEffect = 1;
  
     Futex(&pv->m_lValid, FUTEX_WAKE, pv->m_lGroup, NULL);
     return RC_SUCC;
@@ -94,7 +99,7 @@ long    _lPopup(SATvm *pstSavm, void *pvAddr, void *pvOut)
         if(0 == pv->m_lValid)
             continue;
 
-        if(0 > (llong)__sync_sub_and_fetch(&pv->m_lValid, 1))
+        if(0 > (int)__sync_sub_and_fetch(&pv->m_lValid, 1))
         {   
             __sync_fetch_and_add(&pv->m_lValid, 1);
             continue;
@@ -118,6 +123,7 @@ long    _lPopup(SATvm *pstSavm, void *pvAddr, void *pvOut)
 
     memcpy(pvOut, ps->m_pvData, pv->m_lReSize);
     SET_DATA_TRUCK(ps, DATA_TRUCK_NULL);
+    pstSavm->m_lEffect = 1;
 
     return RC_SUCC;
 }
@@ -135,8 +141,8 @@ long    _lPopup(SATvm *pstSavm, void *pvAddr, void *pvOut)
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, struct timespec *tm, 
-            size_t *plOut, void **ppsvOut)
+long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, Timesp *tm, size_t *plOut, 
+            void **ppsvOut)
 {
     int     nPos;
     SHTruck *ps = NULL;
@@ -171,7 +177,7 @@ long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, struct timespec *tm
         if(0 == pv->m_lValid)
             continue;
 
-        if(0 > (llong)__sync_sub_and_fetch(&pv->m_lValid, 1))
+        if(0 > (int)__sync_sub_and_fetch(&pv->m_lValid, 1))
         {   
             __sync_fetch_and_add(&pv->m_lValid, 1);
             continue;
@@ -196,6 +202,8 @@ long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, struct timespec *tm
         SET_DATA_TRUCK(ps, DATA_TRUCK_NULL);
         ++ (*plOut);
     }
+
+    pstSavm->m_lEffect  = *plOut;
 
     return RC_SUCC;
 }
@@ -233,8 +241,7 @@ long    lPop(SATvm *pstSavm, void *pvOut)
     if(RES_REMOT_SID == pstRun->m_lLocal)
     {
         Tremohold(pstSavm, pstRun);
-        return RC_FAIL;
-//      return _lPopupByRt(pstSavm, psvOut);
+        return _lPopByRt(pstSavm, pvOut);
     }
 
     lRet = _lPopup(pstSavm, pstRun->m_pvAddr, pvOut);
@@ -254,9 +261,10 @@ long    lPop(SATvm *pstSavm, void *pvOut)
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-long    lPops(SATvm *pstSavm, size_t lExpect, Timesp *tm, size_t *plOut, void **ppsvOut)
+long    lPopup(SATvm *pstSavm, size_t lExpect, time_t lTime, size_t *plOut, void **ppsvOut)
 {
     long    lRet;
+    Timesp  tm = {0};
     RunTime *pstRun = NULL;
 
     if(!pstSavm)
@@ -278,11 +286,11 @@ long    lPops(SATvm *pstSavm, size_t lExpect, Timesp *tm, size_t *plOut, void **
     if(RES_REMOT_SID == pstRun->m_lLocal)
     {
         Tremohold(pstSavm, pstRun);
-        return RC_FAIL;
-//      return _lPopupByRt(pstSavm, psvOut);
+        return _lPopupByRt(pstSavm, lExpect, lTime, plOut, ppsvOut);
     }
 
-    lRet = _lPops(pstSavm, pstRun->m_pvAddr, lExpect, tm, plOut, ppsvOut);
+    tm.tv_sec = lTime;
+    lRet = _lPops(pstSavm, pstRun->m_pvAddr, lExpect, &tm, plOut, ppsvOut);
     vTblDisconnect(pstSavm, pstSavm->tblName);
     return lRet;
 }
@@ -323,8 +331,7 @@ long    lPushs(SATvm *pstSavm, size_t *plOut, void **ppsvOut)
         if(RES_REMOT_SID == pstRun->m_lLocal)
         {
             Tremohold(pstSavm, pstRun);
-            return RC_FAIL;
-//            return _lInsertByRt(pstSavm, );
+            return _lPushByRt(pstSavm);
         }
 
         if(RC_SUCC != _lPush(pstSavm, pstRun->m_pvAddr))
@@ -367,7 +374,7 @@ long    lPush(SATvm *pstSavm)
     if(RES_REMOT_SID == pstRun->m_lLocal)
     {
         Tremohold(pstSavm, pstRun);
-        return _lInsertByRt(pstSavm);
+        return _lPushByRt(pstSavm);
     }
 
     lRet = _lPush(pstSavm, pstRun->m_pvAddr);
