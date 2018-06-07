@@ -51,6 +51,10 @@ typedef long                 CREATE;
 #define FIELD_LONG                          2
 #define FIELD_CHAR                          1
 
+#define QUE_NOWAIT                          1
+#define QUE_NORMAL                          0
+
+
 //  execution plan
 #define EXE_PLAN_ALL                        0
 #define EXE_PLAN_IDX                        1 
@@ -158,7 +162,7 @@ typedef long                 CREATE;
 #define TYPE_INCORE                         0x02
 #define TYPE_CLIENT                         0x03        //  custom
 #define TYPE_KEYVAL                         0x04 
-#define TYPE_MQUEUE                         0x05        //  custom
+#define TYPE_MQUEUE                         0x05
 #define TVM_NODE_INFO                       "localhost"
 #define TVM_RUNCFG_TAG                      "\x01\x33\xC8\x48"
 
@@ -194,16 +198,16 @@ typedef long                 CREATE;
 #define IS_TRUCK_NRML(p)                    ((p)->m_chTag == DATA_TRUCK_NRML)
 #define IS_TRUCK_LOCK(p)                    ((p)->m_chTag == DATA_TRUCK_LOCK)
 #define SET_DATA_TRUCK(p, type)             ((p)->m_chTag =  type)
-#define TFree(p)                            if(p) { free(p); p = NULL; }
-#define TFgrp(p)                            do{vDeleteRowgrp(p);p = NULL;}while(0);
-#define TFlst(p)                            do{vDestroyList(p);p = NULL;}while(0);
-#define TClose(f)                           if(f) { fclose(f); f = NULL; }
+#define TFree(p)                             if(p) { free(p); p = NULL; }
+#define TFgrp(p)                             do{vDeleteRowgrp(p);p = NULL;}while(0);
+#define TFlst(p)                             do{vDestroyList(p);p = NULL;}while(0);
+#define TClose(f)                            if(f) { fclose(f); f = NULL; }
 
 #define Futex(a,o,v,t)                      syscall(SYS_futex, a, o, v, t, NULL, 0)
 #define Tremohold(p,r)                      if(p->m_bHold) r->m_lState = RESOURCE_ABLE;
 
 /*************************************************************************************************
-    错误码定义区
+    errno
  *************************************************************************************************/
 #define TVM_DONE_SUCC                       0           // completed successfully
 #define SVR_EXCEPTION                       1           // sever exception
@@ -305,7 +309,7 @@ typedef long                 CREATE;
 #define MQUE_WAIT_TMO                       97          // queue waiting for timeout
 #define MQUE_WAIT_ERR                       98          // queue waiting for failure
 #define MQUE_CRTE_BIG                       99          // created queue is too big
-#define NOT_SUPPT_OPT                      100          // table does not support this operation
+#define NOT_SUPPT_OPT                      100          // queue does not support this operation
 
 /*************************************************************************************************
      创建表宏函数
@@ -332,13 +336,13 @@ typedef long                 CREATE;
 /*************************************************************************************************
     Field assignment
  *************************************************************************************************/
-#define defineinit(p,s,t)       do{ \
+#define conditbind(p,v,t)       do{ \
                                    p->stCond.uFldcmp = 0; \
                                    p->stUpdt.uFldcmp = 0; \
                                    p->lFind = 0;  \
                                    p->tblName = t; \
-                                   p->lSize = sizeof(s); \
-                                   p->pstVoid = (void *)&(s);  \
+                                   p->lSize = sizeof(v); \
+                                   p->pstVoid = (void *)&(v);  \
                                 }while(0);
 
 #define conditinit(p,s,t)       do{ \
@@ -367,14 +371,11 @@ typedef long                 CREATE;
                                    p->pstVoid = (void *)&v;  \
                                 }while(0);
 
-#define queuerset(p,v,l,t)     do{ \
+#define queuerbind(p,v,l,t)     do{ \
                                    p->lSize = l; \
                                    p->tblName = t; \
                                    p->pstVoid = (void *)v;  \
                                 }while(0);
-
-#define queuebind(p,v,l,t)      queuerset(p,v,sizeof(l),t)
-
 #define stringsetv(p,s,f,...)   vSetCodField(&p->stCond, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
                                 snprintf((s).f, sizeof((s).f), __VA_ARGS__);
 
@@ -396,7 +397,6 @@ typedef long                 CREATE;
 #define numberreset(s,f,v)      (s).f = v;
 #define conditset(p,s,f)        vSetCodField(&p->stCond, sizeof((s).f), (char *)&(s).f - (char *)&(s));
 
-#define conditbind              defineinit
 #define conditfld               conditset
 #define conditnum               numberset
 #define conditstr               stringset
@@ -521,7 +521,7 @@ typedef struct __SQL_FIELD
 }SQLFld;
 
 /*************************************************************************************************
-    TVM engine starts the required table (do not move)
+    TVM engine starts the required table (Warn: do not modify)
  *************************************************************************************************/
 typedef struct  __SYS_TVM_INDEX
 {
@@ -821,6 +821,7 @@ extern    long     lSelectSeque(SATvm *pstSavm, char *pszSQName, ulong *pulNumbe
 extern    long     lSetSequence(SATvm *pstSavm, char *pszSQName, ulong uStart);
 extern    long     lCustomTable(SATvm *pstSavm, TABLE t, size_t lRow, TblDef *pstDef);
 extern    long     lCreateTable(SATvm *pstSavm, TABLE t, size_t lRow, TCREATE pfCreateFunc);
+extern    long     lTableQueue(SATvm *pstSavm, TABLE t, size_t lRow, TCREATE pfCreateFunc);
 extern    long     lCircleQueue(SATvm *pstSavm, TABLE t, size_t lRow, size_t lSize, char *p, char *n);
 extern    long     lInsertTrans(SATvm *pstSavm, size_t *plOffset, llSEQ *pllSeq);
 
@@ -839,7 +840,7 @@ extern    long     lQuery(SATvm *pstSavm, size_t *plOut, void **ppsvOut);
 
 // queue interface
 extern    long     lPopup(SATvm *pstSavm, size_t lExpect, time_t lTime, size_t *plOut, void **ppsvOut);
-extern    long     lPop(SATvm *pstSavm, void *pvOut);
+extern    long     lPop(SATvm *pstSavm, void *pvOut, Uenum eWait);
 extern    long     lPushs(SATvm *pstSavm, size_t *plOut, void **ppsvOut);
 extern    long     lPush(SATvm *pstSavm);
 

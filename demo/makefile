@@ -7,8 +7,8 @@ OUTLIB=../lib
 OUTBIN=../bin
 
 OBJFILE=tree.o sem.o msg.o tcp.o str.o list.o conf.o
-CREATE=create
-QUEUE=queue
+CREATE=create_table
+QUEUE=create_queue
 PUSH=push
 POP=pop
 INSERT=insert
@@ -23,10 +23,11 @@ TRUNCATE=truncate
 DROP=drop
 CLICK=click
 REPLACE=replace
+POPUP=popup
 PRESSURE=press_demo
 
-all: $(CREATE) $(INSERT) $(QUEUE) $(PUSH) $(POP) $(SELECT) $(QUERY) $(DELETE) $(UPDATE) $(COUNT) $(GROUP) $(EXTREME) $(TRUNCATE) $(DROP) $(PRESSURE) $(CLICK) $(REPLACE) clean
-$(CREATE): create.o
+all: $(CREATE) $(INSERT) $(QUEUE) $(PUSH) $(POP) $(SELECT) $(QUERY) $(DELETE) $(UPDATE) $(COUNT) $(GROUP) $(EXTREME) $(TRUNCATE) $(DROP) $(PRESSURE) $(CLICK) $(POPUP) $(REPLACE) clean
+$(CREATE): create_table.o
 	$(CC) -o $@ $< $(LIBDIR)
 $(PUSH): push.o
 	$(CC) -o $@ $< $(LIBDIR)
@@ -56,7 +57,9 @@ $(CLICK): click.o
 	$(CC) -o $@ $< $(LIBDIR)
 $(REPLACE): replace.o
 	$(CC) -o $@ $< $(LIBDIR)
-$(QUEUE): queue.o
+$(QUEUE): create_queue.o
+	$(CC) -o $@ $< $(LIBDIR)
+$(POPUP): popup.o
 	$(CC) -o $@ $< $(LIBDIR)
 $(PRESSURE): press_demo.o
 	$(CC) -o $@ $< $(LIBDIR)

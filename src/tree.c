@@ -28,6 +28,8 @@
 SATvm   g_stSavm = {0};
 TblDef  g_stTblDef[TVM_MAX_TABLE] = {0};
 
+extern long       _lPush(SATvm *pstSavm, void *pvAddr);
+extern long       _lPopByRt(SATvm *pstSavm, void *psvOut, Uenum eWait);
 extern long       _lInsertByRt(SATvm *pstSavm);
 extern long       _lGroupByRt(SATvm *pstSavm, size_t *plOut, void **ppvOut);
 extern long       _lSelectByRt(SATvm *pstSavm, void *psvOut);
@@ -150,7 +152,7 @@ static char    tvmerr[128][MAX_INDEX_LEN] = {
     "queue waiting for timeout",
     "queue waiting for failure",
     "created queue is too big",
-    "table does not support this operation",
+    "queue does not support this operation",
     "",
 };
 
@@ -6559,11 +6561,11 @@ long    __lInsert(SATvm *pstSavm, RunTime *pstRun, TABLE t, ulong uTimes)
         return RC_FAIL;
     }
 
-    if(TYPE_MQUEUE == pstRun->m_lType)
-        return _lPush(pstSavm, pstRun->m_pvAddr);
-
     if(FIELD_INCR & pstSavm->lFind)
         vIncrease(&pstSavm->stUpdt, (char *)pstSavm->pstVoid, (TblDef *)pstRun->m_pvAddr);
+
+    if(TYPE_MQUEUE == pstRun->m_lType)
+        return _lPush(pstSavm, pstRun->m_pvAddr);
 
     if(HAVE_UNIQ_IDX(t))
     {
@@ -8066,6 +8068,15 @@ long    lUpdate(SATvm *pstSavm, void *pvUpdate)
     if(NULL == (pstRun = (RunTime *)pInitMemTable(pstSavm, pstSavm->tblName)))
         return RC_FAIL;
 
+/*
+    if(TYPE_MQUEUE == pstRun->m_lType)
+    {
+        pstSavm->m_lErrno = NOT_SUPPT_OPT;
+        vTblDisconnect(pstSavm, pstSavm->tblName);
+        return RC_FAIL;
+    }
+*/
+
     if(RES_REMOT_SID == pstRun->m_lLocal)
     {
         Tremohold(pstSavm, pstRun);
@@ -8896,13 +8907,6 @@ long    lDropTable(SATvm *pstSavm, TABLE t)
     conditinit(pstSavm, stIndex, SYS_TVM_INDEX)
     conditnum(pstSavm, stIndex, m_table, t)
     if(RC_SUCC != lDelete(pstSavm))    return RC_FAIL;
-
-    if(TYPE_MQUEUE == pstRun->m_lType)
-    {
-        memset(pstRun, 0, sizeof(RunTime));
-        pstSavm->m_lEffect = 1;
-        return RC_SUCC;
-    }
 
     // Delete the field table
     if(RC_SUCC != lInitSATvm(pstSavm, SYS_TVM_FIELD))

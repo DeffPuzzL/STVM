@@ -144,7 +144,7 @@ extern long       lAsyReplace(SATvm *pstSavm, void *pvData);
 
 // queue interface
 extern long       lTvmPush(SATvm *pstSavm);
-extern long       lTvmPop(SATvm *pstSavm, void *pvOut);
+extern long       lTvmPop(SATvm *pstSavm, void *pvOut, Uenum eWait);
 extern long       lTvmPopup(SATvm *pstSavm, size_t lExpect, time_t lTime, size_t *plOut, void **ppsvOut);
 #ifdef __cplusplus
 }

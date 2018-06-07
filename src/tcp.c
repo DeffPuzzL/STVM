@@ -1445,7 +1445,7 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
         TFree(pvOut);
         return RC_SUCC;
     case  OPERATE_QUEPOP:
-        if(RC_SUCC != lPop(pstSavm, (void *)pvData))
+        if(RC_SUCC != lPop(pstSavm, (void *)pvData, pstFace->m_lFind))
         {
             pstFace->m_lErrno = pstSavm->m_lErrno;
             lData = sizeof(TFace);
@@ -3187,7 +3187,7 @@ long   _lPopupByRt(SATvm *pstSavm, size_t lExpect, time_t lTime, size_t *plOut, 
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-long    _lPopByRt(SATvm *pstSavm, void *psvOut)
+long    _lPopByRt(SATvm *pstSavm, void *psvOut, Uenum eWait)
 {
     long     lRet;
     TDomain  *pvm, *pnoe;
@@ -3218,7 +3218,7 @@ long    _lPopByRt(SATvm *pstSavm, void *psvOut)
             pstSavm->m_skSock = pvm->m_skSock;
             pstSavm->tblName  = pnoe->m_mtable;
             pthread_mutex_lock(&list->pstFset->lock);
-            lRet = lTvmPop(pstSavm, psvOut);
+            lRet = lTvmPop(pstSavm, psvOut, eWait);
             if(RC_SUCC == lRet || SOCK_COM_EXCP != pstSavm->m_lErrno)
             {
                 pvm->m_lTryTimes = 0;
@@ -3242,7 +3242,7 @@ long    _lPopByRt(SATvm *pstSavm, void *psvOut)
                 continue;
 
             pstSavm->tblName = pvm->m_mtable;
-            lRet = lTvmPop(pstSavm, psvOut);
+            lRet = lTvmPop(pstSavm, psvOut, eWait);
             if(RC_SUCC == lRet || SOCK_COM_EXCP != pstSavm->m_lErrno)
             {
                 close(pstSavm->m_skSock);
@@ -4443,7 +4443,7 @@ long    lTvmPopup(SATvm *pstSavm, size_t lExpect, time_t lTime, size_t *plOut, v
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-long    lTvmPop(SATvm *pstSavm, void *pvOut)
+long    lTvmPop(SATvm *pstSavm, void *pvOut, Uenum eWait)
 {
     RunTime *pstRun;
     TFace   *pstFace;
@@ -4463,6 +4463,7 @@ long    lTvmPop(SATvm *pstSavm, void *pvOut)
 
     pstFace = (TFace *)pstRun->pstVoid;
     pstFace->m_lRows  = 0;
+    pstFace->m_lFind  = eWait;
     pstFace->m_lDLen  = pstSavm->lSize;
     pstFace->m_lErrno = TVM_DONE_SUCC;
     pstFace->m_enum   = OPERATE_QUEPOP;

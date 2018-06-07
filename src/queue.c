@@ -80,16 +80,16 @@ long    _lPush(SATvm *pstSavm, void *pvAddr)
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-long    _lPopup(SATvm *pstSavm, void *pvAddr, void *pvOut)
+long    _lPopup(SATvm *pstSavm, void *pvAddr, void *pvOut, Timesp *tm)
 {
-    int    nPos, lRet;
+    int     nPos, lRet;
     SHTruck *ps = NULL;
     TblDef  *pv = (TblDef *)pvAddr;
 
     errno = 0;
     while(1)
     {
-        Futex(&pv->m_lValid, FUTEX_WAIT, 0, NULL);
+        Futex(&pv->m_lValid, FUTEX_WAIT, 0, tm);
         if(EWOULDBLOCK != errno && 0 != errno)
         {
             pstSavm->m_lErrno = MQUE_WAIT_ERR;
@@ -109,10 +109,10 @@ long    _lPopup(SATvm *pstSavm, void *pvAddr, void *pvOut)
     }
     
     /* at least cost one vaild */
-    if(pv->m_lMaxRow > (nPos = __sync_add_and_fetch(&pv->m_lExSeQ, 1)))
+    if(pv->m_lMaxRow > (nPos = __sync_add_and_fetch(&pv->m_lListOfs, 1)))
         ;
     else if(0 == (nPos = nPos % pv->m_lMaxRow))
-        __sync_sub_and_fetch(&pv->m_lExSeQ, pv->m_lMaxRow);
+        __sync_sub_and_fetch(&pv->m_lListOfs, pv->m_lMaxRow);
     
     ps = (PSHTruck)pGetNode(pvAddr, pv->m_lData + pv->m_lTruck * nPos);
     if(IS_TRUCK_NULL(ps))
@@ -184,10 +184,10 @@ long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, Timesp *tm, size_t 
         }
     
         /* at least cost one vaild */
-        if(pv->m_lMaxRow > (nPos = __sync_add_and_fetch(&pv->m_lExSeQ, 1)))
+        if(pv->m_lMaxRow > (nPos = __sync_add_and_fetch(&pv->m_lListOfs, 1)))
             ;
         else if(0 == (nPos = nPos % pv->m_lMaxRow))
-            __sync_sub_and_fetch(&pv->m_lExSeQ, pv->m_lMaxRow);
+            __sync_sub_and_fetch(&pv->m_lListOfs, pv->m_lMaxRow);
         
         ps = (PSHTruck)pGetNode(pvAddr, pv->m_lData + pv->m_lTruck * nPos);
         if(IS_TRUCK_NULL(ps))
@@ -217,10 +217,11 @@ long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, Timesp *tm, size_t 
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-long    lPop(SATvm *pstSavm, void *pvOut)
+long    lPop(SATvm *pstSavm, void *pvOut, Uenum eWait)
 {
     long    lRet;
     RunTime *pstRun = NULL;
+    static  Timesp  tm = {0, 1};
 
     if(!pstSavm)
     {
@@ -244,7 +245,10 @@ long    lPop(SATvm *pstSavm, void *pvOut)
         return _lPopByRt(pstSavm, pvOut);
     }
 
-    lRet = _lPopup(pstSavm, pstRun->m_pvAddr, pvOut);
+    if(QUE_NOWAIT == eWait)
+        lRet = _lPopup(pstSavm, pstRun->m_pvAddr, pvOut, &tm);
+    else
+        lRet = _lPopup(pstSavm, pstRun->m_pvAddr, pvOut, NULL);
     vTblDisconnect(pstSavm, pstSavm->tblName);
     return lRet;
 }

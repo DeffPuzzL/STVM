@@ -4251,6 +4251,7 @@ void   vSetHistory()
 void    vCustomization(SATvm *pstSavm, char *s)
 {
     sltrim(s);
+    srtrim(s);
 
     if(!strcasecmp(s, "debug on"))
         g_stCustom.m_eDebug = 1;
