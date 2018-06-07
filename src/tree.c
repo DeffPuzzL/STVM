@@ -5116,6 +5116,21 @@ long    lTruncate(SATvm *pstSavm, TABLE t)
         return RC_FAIL;
     }
 
+    if(TYPE_MQUEUE == pstRun->m_lType)
+    {
+        pstSavm->m_lEffect = ((TblDef *)pstRun->m_pvAddr)->m_lValid;
+        pvData = (void *)pGetNode(pstRun->m_pvAddr, lGetTblData(t));
+        memset(pvData, 0, lGetTableSize(t) - lGetTblData(t));
+        ((TblDef *)pstRun->m_pvAddr)->m_lGroup = 0;
+        ((TblDef *)pstRun->m_pvAddr)->m_lValid = 0;
+        ((TblDef *)pstRun->m_pvAddr)->m_lListPos = 0;
+        ((TblDef *)pstRun->m_pvAddr)->m_lListOfs = 0;
+
+        pthread_rwlock_unlock(prwLock);
+        vTblDisconnect(pstSavm, t);
+        return RC_SUCC;
+    }
+
     if(RC_SUCC != lInitailTree(pstSavm, (void *)pGetNode(pstRun->m_pvAddr, lGetIdxPos(t)), t))
     {
         pthread_rwlock_unlock(prwLock);
@@ -9129,7 +9144,6 @@ long    lImportFile(TABLE t, char *pszFile, char *pszFlag)
             memcpy(pvData, szLine, lGetRowSize(t));
         else
             _lImportContext(szLine, lGetFldNum(t), pGetTblKey(t), pvData, pszFlag);
-
         if(RC_SUCC != __lInsert(pstSavm, pstRun, pstSavm->tblName, 0))
             break;
 
@@ -9478,9 +9492,6 @@ long    lRenameTable(SATvm *pstSavm, TABLE to, TABLE tn)
     vTblDisconnect(pstSavm, pstSavm->tblName);
 
     memset((void *)pGetRunTime(pstSavm, to), 0, sizeof(RunTime)); 
-    if(TYPE_MQUEUE == pstRun->m_lType)
-        return RC_SUCC;
-
     if(RC_SUCC != lInitSATvm(pstSavm, SYS_TVM_FIELD))
         return RC_FAIL;
 
@@ -9488,7 +9499,13 @@ long    lRenameTable(SATvm *pstSavm, TABLE to, TABLE tn)
     conditinit(pstSavm, stField, SYS_TVM_FIELD);
     conditnum(pstSavm, stField, m_table, to);
     updatenum(pstSavm, stNFld, m_table, tn);
-    return lUpdate(pstSavm, &stNFld);
+    if(RC_SUCC != lUpdate(pstSavm, &stNFld))
+	{
+		if(NO_DATA_FOUND != pstSavm->m_lErrno)
+	        return RC_FAIL;
+	}
+	
+	return RC_SUCC;
 }
 
 /*************************************************************************************************
@@ -11040,7 +11057,6 @@ long    lMountTable(SATvm *pstSavm, char *pszFile)
         }
 
         lEffect ++;
-
         if(RC_SUCC != __lInsert(pstSavm, pstRun, pstSavm->tblName, uTimes))
         {
             fprintf(stderr, "=>警告, 导入表:%s 第(%ld)条记录错误, %s, 跳过..\n", 

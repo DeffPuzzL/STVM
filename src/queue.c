@@ -80,20 +80,29 @@ long    _lPush(SATvm *pstSavm, void *pvAddr)
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-long    _lPopup(SATvm *pstSavm, void *pvAddr, void *pvOut, Timesp *tm)
+long    _lPop(SATvm *pstSavm, void *pvAddr, void *pvOut, Timesp *tm)
 {
-    int     nPos, lRet;
+    int     nPos;
     SHTruck *ps = NULL;
+    extern  int errno;
     TblDef  *pv = (TblDef *)pvAddr;
 
-    errno = 0;
     while(1)
     {
-        Futex(&pv->m_lValid, FUTEX_WAIT, 0, tm);
-        if(EWOULDBLOCK != errno && 0 != errno)
+        if(0 != Futex(&pv->m_lValid, FUTEX_WAIT, 0, tm))
         {
-            pstSavm->m_lErrno = MQUE_WAIT_ERR;
-            return RC_FAIL;
+            if(ETIMEDOUT == errno) // timeout
+            {
+                pstSavm->m_lErrno = NO_DATA_FOUND;
+                return RC_FAIL;
+            }
+            else if(EWOULDBLOCK != errno)
+            {
+                pstSavm->m_lErrno = MQUE_WAIT_ERR;
+                return RC_FAIL;
+            }
+            else    // EWOULDBLOCK
+                ;
         }
  
         if(0 == pv->m_lValid)
@@ -146,6 +155,7 @@ long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, Timesp *tm, size_t 
 {
     int     nPos;
     SHTruck *ps = NULL;
+    extern  int errno;
     TblDef  *pv = (TblDef *)pvAddr;
 
     if(NULL == (*ppsvOut = (char *)malloc(lExpect * pv->m_lReSize)))
@@ -154,24 +164,28 @@ long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, Timesp *tm, size_t 
         return RC_FAIL;
     }
 
-    for (*plOut = 0; 0 < lExpect; --lExpect)
+    for (*plOut = 0; *plOut < lExpect; )
     {
         if(0 != Futex(&pv->m_lValid, FUTEX_WAIT, 0, tm))
         {
-            if(EWOULDBLOCK == errno)
+            if(ETIMEDOUT == errno)
             {
-               if(0 == *plOut)
-               {
-                   pstSavm->m_lErrno = NO_DATA_FOUND;
-                   TFree(*ppsvOut);
-               }
-               else
-                   pstSavm->m_lErrno = MQUE_WAIT_TMO;
-               return RC_SUCC;
+                if(0 == *plOut)
+                {
+                    TFree(*ppsvOut);
+                    pstSavm->m_lErrno = NO_DATA_FOUND;
+                }
+                else
+                    pstSavm->m_lErrno = MQUE_WAIT_TMO;
+                return RC_FAIL;
             }
-
-            pstSavm->m_lErrno = MQUE_WAIT_ERR;
-            return RC_FAIL;
+            else if(EWOULDBLOCK != errno)
+            {
+                pstSavm->m_lErrno = MQUE_WAIT_ERR;
+                return RC_FAIL;
+            }
+            else    // EWOULDBLOCK
+                ;
         }
  
         if(0 == pv->m_lValid)
@@ -246,9 +260,9 @@ long    lPop(SATvm *pstSavm, void *pvOut, Uenum eWait)
     }
 
     if(QUE_NOWAIT == eWait)
-        lRet = _lPopup(pstSavm, pstRun->m_pvAddr, pvOut, &tm);
+        lRet = _lPop(pstSavm, pstRun->m_pvAddr, pvOut, &tm);
     else
-        lRet = _lPopup(pstSavm, pstRun->m_pvAddr, pvOut, NULL);
+        lRet = _lPop(pstSavm, pstRun->m_pvAddr, pvOut, NULL);
     vTblDisconnect(pstSavm, pstSavm->tblName);
     return lRet;
 }

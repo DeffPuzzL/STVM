@@ -30,7 +30,6 @@
 #include <signal.h>
 #include <stdarg.h>
 #include <getopt.h>
-#include <unistd.h>
 #include <math.h>
 #include <sys/prctl.h>
 #include <sys/types.h>

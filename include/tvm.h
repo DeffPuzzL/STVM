@@ -54,7 +54,6 @@ typedef long                 CREATE;
 #define QUE_NOWAIT                          1
 #define QUE_NORMAL                          0
 
-
 //  execution plan
 #define EXE_PLAN_ALL                        0
 #define EXE_PLAN_IDX                        1 

@@ -1,7 +1,7 @@
 #include    "tvm.h"
 #include    "tmain.h"
 
-#define    TBL_USER_INFO            20
+#define    TBL_USER_INFO            21
 
 typedef struct  __TBL_USER_INFO
 {
