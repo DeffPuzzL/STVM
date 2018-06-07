@@ -13,7 +13,7 @@ OUTBIN=../bin
 
 OBJFILE=tree.o sem.o msg.o tcp.o str.o list.o conf.o queue.o
 TARGET=$(OUTLIB)/libstvm.a
-#TARDLL=$(OUTLIB)/libstvm.so
+TARDLL=$(OUTLIB)/libstvm.so
 TARVER=$(OUTLIB)/libstvm.so.1.2
 STVM=$(OUTBIN)/stvm
 DETVM=$(OUTBIN)/detvm
