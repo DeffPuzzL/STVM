@@ -3827,7 +3827,6 @@ void    vInitTableList(SATvm *pstSavm, bool bRmt)
 //        return RC_FAIL;
 
     conditinit(pstSavm, stIndex, SYS_TVM_INDEX);
-    conditnum(pstSavm, stIndex, m_lType, TYPE_CLIENT);
     conditnum(pstSavm, stIndex, m_lLocal, RES_LOCAL_SID);
 
     if(bRmt)
@@ -3838,7 +3837,11 @@ void    vInitTableList(SATvm *pstSavm, bool bRmt)
         return ;
 
     for(i = 0, lRet = strlen(g_stCustom.m_pszWord); i < lRows; i ++)
+    {
+        if(TYPE_SYSTEM == pstIndex[i].m_lType)
+            continue;
         vAppendTabList(pstIndex[i].m_szTable);
+    }
 
     TFree(pstIndex);
     return ;

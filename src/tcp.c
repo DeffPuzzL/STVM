@@ -1429,7 +1429,10 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
     case  OPERATE_QUEPOPS:
         if(RC_SUCC == lPopup(pstSavm, pstFace->m_lFind, pstFace->m_lErrno, 
             (size_t *)&pstFace->m_lRows, (void *)&pvOut))
+		{
+			pstSavm->m_lErrno = TVM_DONE_SUCC;
             lData = pstFace->m_lDLen * pstFace->m_lRows;
+		}
 
         pstFace->m_lErrno = pstSavm->m_lErrno;
         if(sizeof(TFace) != lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace)))
@@ -3666,6 +3669,89 @@ long    _lGroupByRt(SATvm *pstSavm, size_t *plOut, void **ppvOut)
 
             pstSavm->tblName = pvm->m_mtable;
             lRet = lTvmGroup(pstSavm, plOut, ppvOut);
+            if(RC_SUCC == lRet || SOCK_COM_EXCP != pstSavm->m_lErrno)
+            {
+                close(pstSavm->m_skSock);
+                ((RunTime *)pGetRunTime(pstSavm, 0))->m_lRowSize = 0;
+                TFree(((RunTime *)pGetRunTime(pstSavm, 0))->pstVoid);
+                return lRet;
+            }
+
+            close(pstSavm->m_skSock);
+        }
+
+        ((RunTime *)pGetRunTime(pstSavm, 0))->m_lRowSize = 0;
+        TFree(((RunTime *)pGetRunTime(pstSavm, 0))->pstVoid);
+        return RC_FAIL;
+    }
+}
+
+/*************************************************************************************************
+    description：remote - Click
+    parameters:
+        pstSavm                    --stvm handle
+        plOut                      --count
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long   _lClickByRt(SATvm *pstSavm, ulong *puHits)
+{
+    long     lRet;
+    TDomain  *pvm, *pnoe;
+    Rowgrp   *list = NULL, *node = NULL;
+
+    if(NULL == (node = pGetTblNode(pstSavm->tblName)))
+    {
+        pstSavm->m_lErrno = DOM_NOT_INITL;
+        return RC_FAIL;
+    }
+
+    pstSavm->m_lErrno = RESOU_DISABLE;
+    switch(lGetBootType())
+    {
+    case TVM_BOOT_CLUSTER:
+        for(list = node->pstSSet; list; list = list->pstNext)
+        {
+            if(!list->pstFset)
+                continue;
+
+            if(NULL == (pvm = (TDomain *)(list->pstFset->psvData)))
+                continue;
+
+            pnoe = (TDomain *)list->psvData;
+            if(0 == (OPERATE_SELECT & pnoe->m_lPers) || RESOURCE_ABLE != pvm->m_lStatus ||
+                pnoe->m_lRelia < 0)
+                continue;
+
+            pstSavm->m_skSock = pvm->m_skSock;
+            pstSavm->tblName  = pnoe->m_mtable;
+            pthread_mutex_lock(&list->pstFset->lock);
+            lRet = lTvmClick(pstSavm, puHits);
+            if(RC_SUCC == lRet || SOCK_COM_EXCP != pstSavm->m_lErrno)
+            {
+                pvm->m_lTryTimes = 0;
+                pvm->m_lLastTime = time(NULL);
+            }
+
+            pthread_mutex_unlock(&list->pstFset->lock);
+            return lRet;
+        }
+        return RC_FAIL;
+    default:
+        for(list = node->pstSSet; list; list = list->pstNext)
+        {
+            if(NULL == (pvm = (TDomain *)(list->psvData)))
+                continue;
+
+            if(0 == (OPERATE_SELECT & pvm->m_lPers))
+                continue;
+
+            if(RC_SUCC != lTvmConnect(pstSavm, pvm->m_szIp, pvm->m_lPort, pvm->m_lTimeOut))
+                continue;
+
+            pstSavm->tblName = pvm->m_mtable;
+            lRet = lTvmClick(pstSavm, puHits);
             if(RC_SUCC == lRet || SOCK_COM_EXCP != pstSavm->m_lErrno)
             {
                 close(pstSavm->m_skSock);

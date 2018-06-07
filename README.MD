@@ -110,6 +110,10 @@ STVM也提供一个类型sqlpuls类型简单工具。
 >* 2、在M-SQL支持查询索引 show index from tablename
 >* 3、新增用户M-SQL用户体验(TAB补全、查询展示showmode、showsize)
 
+====***更新日期:20180531***====
+
+>* 1、新增queue功能
+
 **下本版本：**
 * 1、新增多机资源共享方式。
 * 2、JAVA接口开发

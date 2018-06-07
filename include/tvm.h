@@ -328,7 +328,7 @@ typedef long                 CREATE;
                                     return RC_FAIL;
 #define FINISH                  return RC_SUCC;
 
-#define lCreateQueue(p,t,r,s,n) lCircleQueue(p, t, r, s, #t, n)
+#define QUEUE                   DEFINE
 /*************************************************************************************************
     Field assignment
  *************************************************************************************************/
@@ -686,6 +686,11 @@ typedef struct __STVM_CUSTOMIZE
 }TCustom;
 
 /*************************************************************************************************
+    macro
+ *************************************************************************************************/
+#define lCreateQueue(p,t,r,s,n) lCircleQueue(p, t, r, s, #t, n)
+
+/*************************************************************************************************
     内部函数
  *************************************************************************************************/
 #ifdef __cplusplus
@@ -751,7 +756,7 @@ extern    long    lMakeConfig(char *pszFile);
  *************************************************************************************************/
 extern    void*    pGetSATvm();
 
-// ptrhead use
+// pthread use
 extern    void*    pCloneSATvm();
 extern    void     vCloneFree(SATvm *pstSavm);
 extern    void     vCloneQueue(SATvm *pstSovm, TABLE t);
