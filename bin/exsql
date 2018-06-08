@@ -1,0 +1,14 @@
+#!/bin/bash
+
+if [ $# -lt 1 ]; then
+    echo -e "\nUsage: `basename $0` file ..."
+    echo -e "Execute stvm M-SQL files scripts\n"
+    exit 0;
+fi
+
+while [ $# -ne 0 ]
+do
+    stvm SQL --msql=$1
+#   echo $?
+    shift
+done

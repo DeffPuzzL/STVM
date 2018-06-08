@@ -1374,7 +1374,7 @@ long    _lShowTableInfo(SATvm *pstSavm, char *pszTable, bool bRmt)
     {
         fprintf(stderr, "hit test table (%d) failed, err:(%d)(%s)\n", stIndex.m_table,
             pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
-        return ;
+        return RC_FAIL;
     }
 
     if(HAVE_UNIQ_IDX(pstSavm->tblName))
@@ -1467,7 +1467,7 @@ void    vPrintIndex()
 
         nRecord ++;
 
-        fprintf(stdout, "[%3ld]: %4d|%4ld|%-22s|%-15s|%10s|%8d|%8ld|%8ld|%8ld|%4ld|%4ld|%4d|%4ld|%20s|\n",
+        fprintf(stdout, "[%3ld]: %4d|%4u|%-22s|%-15s|%10s|%8d|%8ld|%8ld|%8ld|%4ld|%4ld|%4d|%4ld|%20s|\n",
             nRecord, stIndex.m_table, stIndex.m_lType, stIndex.m_szTable, stIndex.m_szPart, 
             stIndex.m_szOwner, stIndex.m_yKey, stIndex.m_shmID, stIndex.m_semID, stIndex.m_lMaxRows, 
             stIndex.m_lRowSize, stIndex.m_lLocal, stIndex.m_lState, stIndex.m_lPers, stIndex.m_szTime);
@@ -2408,11 +2408,11 @@ long    _lExeSelect(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, char *pvD
                     switch(pstKey->m_lLen)
                     {
                     case    4:
-                        fprintf(stdout, "%-*s:%f\n", lRet, pstNode->m_stKey.m_szField, 
+                        fprintf(stdout, "%-*s:%f\n", (int)lRet, pstNode->m_stKey.m_szField, 
                             *((float *)(pvResult + lOffset + pstKey->m_lFrom)));
                         break;
                     case    8:
-                        fprintf(stdout, "%-*s:%f\n", lRet, pstNode->m_stKey.m_szField, 
+                        fprintf(stdout, "%-*s:%f\n", (int)lRet, pstNode->m_stKey.m_szField, 
                             *((double *)(pvResult + lOffset + pstKey->m_lFrom)));
                         break;
                     default:
@@ -2423,15 +2423,15 @@ long    _lExeSelect(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, char *pvD
                     switch(pstKey->m_lLen)
                     {
                     case    2:
-                        fprintf(stdout, "%-*s:%d\n", lRet, pstNode->m_stKey.m_szField, 
+                        fprintf(stdout, "%-*s:%d\n", (int)lRet, pstNode->m_stKey.m_szField, 
                             *((sint *)(pvResult + lOffset + pstKey->m_lFrom)));
                         break;
                     case    4:
-                        fprintf(stdout, "%-*s:%d\n", lRet, pstNode->m_stKey.m_szField, 
+                        fprintf(stdout, "%-*s:%d\n", (int)lRet, pstNode->m_stKey.m_szField, 
                             *((int *)(pvResult + lOffset + pstKey->m_lFrom)));
                         break;
                     case    8:
-                        fprintf(stdout, "%-*s:%lld\n", lRet, pstNode->m_stKey.m_szField, 
+                        fprintf(stdout, "%-*s:%lld\n", (int)lRet, pstNode->m_stKey.m_szField, 
                             *((llong *)(pvResult + lOffset + pstKey->m_lFrom)));
                         break;
                     default:
@@ -2441,7 +2441,7 @@ long    _lExeSelect(SATvm *pstSavm, TIndex *pstIndex, SQLFld *pstRoot, char *pvD
                 case FIELD_CHAR:
                     if(strlen(pvResult + lOffset + pstKey->m_lFrom) > k)
                         k = strlen(pvResult + lOffset + pstKey->m_lFrom);
-                    fprintf(stdout, "%-*s:%.*s\n", lRet, pstNode->m_stKey.m_szField, 
+                    fprintf(stdout, "%-*s:%.*s\n", (int)lRet, pstNode->m_stKey.m_szField, 
                         (int)pstKey->m_lLen, pvResult + lOffset + pstKey->m_lFrom); 
                     break;
                 default:
@@ -4188,6 +4188,7 @@ void   vAddHistory(char *s)
     if(!strcmp(szCmd, s))
         return ;
 
+    add_history(s);
     memset(szPath, 0, sizeof(szPath));
     strncpy(szCmd, s, sizeof(szCmd));
     snprintf(szPath, sizeof(szPath), "%s/%s", getenv("TVMDBD"), STVM_SQL_LINE);
@@ -4489,7 +4490,6 @@ void    vSQLStatement(int argc, char *argv[])
         {
             vCustomization(pstSavm, pszUser + 4);
             fprintf(stdout, "\n\n\n");
-            add_history(pszUser);
             vAddHistory(pszUser);
             TFree(pszUser);
             continue;
@@ -4507,7 +4507,6 @@ void    vSQLStatement(int argc, char *argv[])
             strcpy(szSQL, pszUser);
             lCreateByFile(pszUser + 6);
             fprintf(stdout, "\n\n\n");
-            add_history(szSQL);
             vAddHistory(szSQL);
             TFree(pszUser);
             continue;
@@ -4526,7 +4525,6 @@ void    vSQLStatement(int argc, char *argv[])
                '#' == szSQL[0])
                continue;
 
-            add_history(szSQL);
             sfieldreplace(szSQL, '\t', ' ');
             fprintf(stdout, "\n------------------------------------------------------SQL Result"
                 "-----------------------------------------------------\n");
@@ -4536,6 +4534,7 @@ void    vSQLStatement(int argc, char *argv[])
                 lRet = lExecuteSQL(pstSavm, szSQL);
             if(RC_SUCC != lRet)
             {
+                add_history(szSQL);
                 fprintf(stderr, "execute M-SQL error, (%d)(%s)\n", pstSavm->m_lErrno, 
                     sGetTError(pstSavm->m_lErrno));
                 continue;

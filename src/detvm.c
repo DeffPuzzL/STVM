@@ -105,7 +105,7 @@ void    vDebugTable(TABLE t, long eType)
             "TblDef:%11ld\nGroup:%9ld, MaxRow:%10ld, Valid:%12ld\nlNodeNil:%6ld, lIType:%10d, "
             "Table:%12ld\nIdxLen:%8ld, TreePos:%9ld, TreeRoot:%9ld\nGrpLen:%8ld, GroupPos:%8ld, "
             "GroupRoot:%8ld\nData:%10ld, ReSize:%10ld, Truck:%12ld\nListPos:%7ld, ListOfs:%9ld, "
-            "ExSeQ:%12ld\n", 
+            "ExSeQ:%12lld\n", 
             ((TblDef *)pGetTblDef(t))->m_table, ((TblDef *)pGetTblDef(t))->m_lExtern, 
             ((TblDef *)pGetTblDef(t))->m_szTable, sizeof(SHTree), sizeof(SHList), sizeof(TblDef), 
             ((TblDef *)pGetTblDef(t))->m_lGroup, ((TblDef *)pGetTblDef(t))->m_lMaxRow, 

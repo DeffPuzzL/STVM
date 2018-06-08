@@ -27,7 +27,7 @@ long    lTruncateUserInfo()
 
     if(RC_SUCC != lTruncate(pstSavm, TBL_USER_INFO))
     {
-        fprintf(stderr, "Truncate error: (%d)(%s)\n", pstSavm->m_lEType, pstSavm->m_lErrno,
+        fprintf(stderr, "Truncate error:(%u)(%s)\n", pstSavm->m_lErrno,
             sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;
     }
