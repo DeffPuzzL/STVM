@@ -1,5 +1,5 @@
 INCDIR= -I/usr/include -I$(HOME)/include -I./ -I./include -I../include
-LIBDIR= -L$(HOME)/lib -L../lib -lstvm -lreadline -lm -lc -ldl -lpthread
+LIBDIR= -L$(HOME)/lib -L../lib -lstvm -lreadline -lm -lc -ldl -lrt -lpthread
 AR=ar
 LD=ld
 LN=ln

@@ -1239,7 +1239,7 @@ long    lShowTables(SATvm *pstSavm)
     parameters：
     return：
  **************************************************************************************************/
-void    vPrintAmount(int t, char *pszTable, int nValid, int nMax)
+void    vPrintAmount(int t, uint uType, char *pszTable, int nValid, int nMax)
 {
     double  dPer;
     int     i, nPer;
@@ -1249,7 +1249,12 @@ void    vPrintAmount(int t, char *pszTable, int nValid, int nMax)
     dPer = nValid * 100.0 / nMax;
     nPer = nValid * 50 / nMax > 0 ? nValid * 50 / nMax : 1;
 
-    fprintf(stdout, "TABLE:[%3d][%-20s]: [", t, pszTable);
+    if(SYS_TVM_SEQUE == t)
+        fprintf(stdout, "SEQUE:[%3d][%-20s]: [", t, pszTable);
+    else if(TYPE_MQUEUE == uType)
+        fprintf(stdout, "QUEUE:[%3d][%-20s]: [", t, pszTable);
+    else
+        fprintf(stdout, "TABLE:[%3d][%-20s]: [", t, pszTable);
     if(dPer < 60.00)
         fprintf(stdout, "\033[42;32m");
     else if(dPer < 70.00)
@@ -1318,8 +1323,8 @@ void    vTableAmount()
         else
             snprintf(szTable, sizeof(szTable), "%s@%s", pstIndex[i].m_szPart, pstIndex[i].m_szTable);
 
-        vPrintAmount(pstIndex[i].m_table, szTable, lGetTblValid(pstIndex[i].m_table),
-             lGetTblRow(pstIndex[i].m_table));
+        vPrintAmount(pstIndex[i].m_table, pstIndex[i].m_lType, szTable, 
+             lGetTblValid(pstIndex[i].m_table), lGetTblRow(pstIndex[i].m_table));
         vTblDisconnect(pstSavm, pstIndex[i].m_table);
     }
     TFree(pstIndex);

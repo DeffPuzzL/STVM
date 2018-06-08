@@ -13,7 +13,7 @@ typedef struct  __TBL_USER_INFO
    char    user_phone[31];
 }dbUser;
 
-long    lExtremeUserInfo()
+int   main(int argc, char *argv[])
 {
     dbUser  stUser;
     SATvm   *pstSavm = (SATvm *)pGetSATvm();
@@ -21,7 +21,8 @@ long    lExtremeUserInfo()
     /* 初始化TBL_USER_INFO表，每张表都需要初始化一次, 对于表重建后，需要重新初始化一次。*/          
     if(RC_SUCC != lInitSATvm(pstSavm, TBL_USER_INFO))
     {
-        fprintf(stderr, "init failed, err:(%d)(%s)\n", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
+        fprintf(stderr, "init failed, err:(%d)(%s)\n", pstSavm->m_lErrno, 
+            sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;
     }
  
@@ -32,7 +33,8 @@ long    lExtremeUserInfo()
     decorate(pstSavm, dbUser, user_phone, MATCH_MAX);
     if(RC_SUCC != lExtreme(pstSavm, (void *)&stUser))
     {
-        fprintf(stderr, "Extreme error: (%d) (%s)\n", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
+        fprintf(stderr, "Extreme error: (%d) (%s)\n", pstSavm->m_lErrno, 
+            sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;
     }
 
@@ -40,13 +42,3 @@ long    lExtremeUserInfo()
 
     return RC_SUCC;
 }
-
-int   main(int argc, char *argv[])
-{
-    if(RC_SUCC != lExtremeUserInfo())
-        return RC_FAIL;
-
-    return RC_SUCC;
-}
-
-

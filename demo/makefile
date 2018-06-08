@@ -1,6 +1,6 @@
 INCDIR= -I/usr/include -I$(HOME)/include -I./ -I./include -I../include
 #LIBDIR= -L$(HOME)/lib -L../lib -lm -lc -ldl -lpthread -static -lstvm
-LIBDIR= -L$(HOME)/lib -L../lib -lstvm -lm -lc -ldl -lpthread 
+LIBDIR= -L$(HOME)/lib -L../lib -lstvm -lm -lc -ldl -lrt -lpthread 
 CC=cc -fPIC -g
 CO=-c -pg
 OUTLIB=../lib
@@ -11,6 +11,8 @@ CREATE=create_table
 QUEUE=create_queue
 PUSH=push
 POP=pop
+TVMPOP=tvmpop
+TVMREPLACE=tvmreplace
 INSERT=insert
 SELECT=select
 QUERY=query
@@ -25,11 +27,21 @@ CLICK=click
 REPLACE=replace
 POPUP=popup
 PRESSURE=press_demo
+TVMPUSH=tvmpush
+ASYPUSH=asypush
 
-all: $(CREATE) $(INSERT) $(QUEUE) $(PUSH) $(POP) $(SELECT) $(QUERY) $(DELETE) $(UPDATE) $(COUNT) $(GROUP) $(EXTREME) $(TRUNCATE) $(DROP) $(PRESSURE) $(CLICK) $(POPUP) $(REPLACE) clean
+all: $(CREATE) $(INSERT) $(QUEUE) $(PUSH) $(POP) $(SELECT) $(QUERY) $(DELETE) $(UPDATE) $(COUNT) $(GROUP) $(EXTREME) $(TRUNCATE) $(DROP) $(PRESSURE) $(CLICK) $(POPUP) $(REPLACE) $(TVMPUSH) $(ASYPUSH) $(TVMPOP) $(TVMREPLACE) clean
 $(CREATE): create_table.o
 	$(CC) -o $@ $< $(LIBDIR)
+$(TVMREPLACE): tvmreplace.o
+	$(CC) -o $@ $< $(LIBDIR)
+$(TVMPOP): tvmpop.o
+	$(CC) -o $@ $< $(LIBDIR)
 $(PUSH): push.o
+	$(CC) -o $@ $< $(LIBDIR)
+$(TVMPUSH): tvmpush.o
+	$(CC) -o $@ $< $(LIBDIR)
+$(ASYPUSH): asypush.o
 	$(CC) -o $@ $< $(LIBDIR)
 $(POP): pop.o
 	$(CC) -o $@ $< $(LIBDIR)

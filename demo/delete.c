@@ -13,7 +13,7 @@ typedef struct  __TBL_USER_INFO
    char    user_phone[31];
 }dbUser;
 
-long    lDeleteUserInfo()
+int   main(int argc, char *argv[])
 {
     dbUser  stUser;
     SATvm   *pstSavm = (SATvm *)pGetSATvm();
@@ -21,7 +21,8 @@ long    lDeleteUserInfo()
     /* 初始化TBL_USER_INFO表，每张表都需要初始化一次, 对于表重建后，需要重新初始化一次。*/          
     if(RC_SUCC != lInitSATvm(pstSavm, TBL_USER_INFO))
     {
-        fprintf(stderr, "init failed, err:(%d)(%s)\n", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
+        fprintf(stderr, "init failed, err:(%d)(%s)\n", pstSavm->m_lErrno, 
+            sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;
     }
  
@@ -31,20 +32,10 @@ long    lDeleteUserInfo()
  
     if(RC_SUCC != lDelete(pstSavm))
     {
-        fprintf(stderr, "Delete error: (%d) (%s)\n", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
+        fprintf(stderr, "Delete error: (%d) (%s)\n", pstSavm->m_lErrno, 
+            sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;
     }
 
     return RC_SUCC;
 }
-
-int   main(int argc, char *argv[])
-{
-
-    if(RC_SUCC != lDeleteUserInfo())
-        return RC_FAIL;
-
-    return RC_SUCC;
-}
-
-

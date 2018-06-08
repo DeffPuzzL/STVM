@@ -1420,6 +1420,13 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
         if(RC_SUCC == lDelete(pstSavm))
             pstCon->m_pstWork = pstSavm->m_pstWork;
         return RC_SUCC;
+    case  OPERAYS_QUEPUSH:
+        if(RC_SUCC != lPush(pstSavm))
+        {
+            Tlog("Asypush error, %d, %s", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
+            pstFace->m_lRows  = pstSavm->m_lEffect;
+        }
+        return RC_SUCC;
     case  OPERAYS_INSERT:
         pstSavm->m_bWork = pstCon->m_bWork;
         pstSavm->m_pstWork = pstCon->m_pstWork;
@@ -1427,13 +1434,8 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
             pstCon->m_pstWork = pstSavm->m_pstWork;
         return RC_SUCC;
     case  OPERATE_QUEPOPS:
-        if(RC_SUCC == lPopup(pstSavm, pstFace->m_lFind, pstFace->m_lErrno, 
-            (size_t *)&pstFace->m_lRows, (void *)&pvOut))
-		{
-			pstSavm->m_lErrno = TVM_DONE_SUCC;
-            lData = pstFace->m_lDLen * pstFace->m_lRows;
-		}
-
+        lPopup(pstSavm, pstFace->m_lFind, pstFace->m_lErrno, (size_t *)&pstFace->m_lRows, 
+            (void *)&pvOut);
         pstFace->m_lErrno = pstSavm->m_lErrno;
         if(sizeof(TFace) != lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace)))
         {
@@ -1441,6 +1443,7 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
             return RC_SUCC;
         }
 
+        lData = pstFace->m_lDLen * pstFace->m_lRows;
         lSendBuffer(pstCon->m_skSock, pvOut, lData);
         TFree(pvOut);
         return RC_SUCC;
@@ -2240,7 +2243,7 @@ long    lCacheDomain(SATvm *pstSavm, Benum eMode, long lPort)
         return RC_FAIL;
     }
 
-    conditnull(pstSavm, TDomain, SYS_TVM_DOMAIN);
+    conditnull(pstSavm, sizeof(TDomain), SYS_TVM_DOMAIN);
     decorate(pstSavm, TDomain, m_szIp, GROUP_BY | ORDER_ASC);
     decorate(pstSavm, TDomain, m_lPort, GROUP_BY | ORDER_ASC);
     decorate(pstSavm, TDomain, m_lGroup, GROUP_BY);
@@ -2274,7 +2277,7 @@ long    lCacheDomain(SATvm *pstSavm, Benum eMode, long lPort)
     }
     TFree(pstDom);
 
-    conditnull(pstSavm, TDomain, SYS_TVM_DOMAIN);
+    conditnull(pstSavm, sizeof(TDomain), SYS_TVM_DOMAIN);
     decorate(pstSavm, TDomain, m_table, GROUP_BY | ORDER_ASC);
     if(RC_SUCC != lGroup(pstSavm, &lOut, (void *)&pstDom))
     {
@@ -2470,6 +2473,7 @@ long    lBootLocal(SATvm *pstSavm, TBoot *pstBoot, Benum eMode)
         }
     }
 
+    fflush(stdout);
     fprintf(stdout, "   process %s id=%d ... success\n", TVM_LOCAL_SERV, getpid());
     fflush(stdout);
 
@@ -4100,6 +4104,7 @@ void*    pProtocaJava(SATvm *pstSavm, void *pstVoid, TFace *pstFace, void *pvBuf
 
     switch(pstFace->m_enum)
     {
+    case OPERAYS_QUEPUSH:
     case OPERATE_QUEPUSH:
     case OPERATE_INSERT:
         return pvBuffer;
@@ -4235,6 +4240,7 @@ void*    pParsePacket(SATvm *pstSavm, void *pstVoid, TFace *pstFace, void *pvBuf
     {
     case OPERAYS_INSERT:
     case OPERATE_INSERT:
+    case OPERAYS_QUEPUSH:
     case OPERATE_QUEPUSH:
         return memcpy(pstVoid, pvData, pstFace->m_lDLen);
     case OPERAYS_UPDATE:
@@ -4384,7 +4390,10 @@ long    lTvmPopup(SATvm *pstSavm, size_t lExpect, time_t lTime, size_t *plOut, v
         pstSavm->m_lErrno = CONDIT_IS_NIL;
         return RC_FAIL;
     }
-
+   
+    // longest waiting time is 10 min
+    lTime = lTime > 600 ? 600 : lTime;
+ 
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
@@ -4413,7 +4422,7 @@ long    lTvmPopup(SATvm *pstSavm, size_t lExpect, time_t lTime, size_t *plOut, v
     }
 
     pstSavm->m_lErrno = pstFace->m_lErrno;
-    if(0 != pstSavm->m_lErrno)
+    if(0 != pstSavm->m_lErrno && 0 == pstFace->m_lRows)
         return RC_FAIL;
 
     pstRun->m_lRowSize = pstSavm->lSize * pstFace->m_lRows;
@@ -4845,6 +4854,54 @@ long    lAsyInsert(SATvm *pstSavm)
         return RC_FAIL;
     }
         
+    return RC_SUCC;
+}
+
+/*************************************************************************************************
+    description：API - push by asynch
+    parameters:
+        pstSavm                    --stvm handle
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long   lAsyPush(SATvm *pstSavm)
+{
+    RunTime *pstRun;
+    TFace   *pstFace;
+    uint    lWrite = sizeof(TFace);
+
+    if(!pstSavm || !pstSavm->pstVoid)
+    {
+        pstSavm->m_lErrno = CONDIT_IS_NIL;
+        return RC_FAIL;
+    }
+
+    pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
+    if(!pstRun->pstVoid)
+    {
+        pstSavm->m_lErrno = DOM_NOT_INITL;
+        return RC_FAIL;
+    }
+
+    pstFace = (TFace *)pstRun->pstVoid;
+    pstFace->m_lFind  = pstSavm->lFind;
+    pstFace->m_lDLen  = pstSavm->lSize;
+    pstFace->m_lErrno = TVM_DONE_SUCC;
+    pstFace->m_enum   = OPERAYS_QUEPUSH;
+    pstFace->m_table  = pstSavm->tblName;
+
+    pstFace->m_lRows  = pstSavm->lSize;
+    lWrite = pstFace->m_lRows + sizeof(TFace);
+
+    checkbuffer(pstSavm, pstRun, 1);
+    memcpy(pstRun->pstVoid + sizeof(TFace), pstSavm->pstVoid, pstSavm->lSize);
+    if(lWrite != lSendBuffer(pstSavm->m_skSock, (void *)pstRun->pstVoid, lWrite))
+    {
+        pstSavm->m_lErrno = SOCK_COM_EXCP;
+        return RC_FAIL;
+    }
+
     return RC_SUCC;
 }
 

@@ -137,6 +137,7 @@ extern long       lTvmRebuildIndex(SATvm *pstSavm, TABLE t);
 extern long       lTvmResetLock(SATvm *pstSavm, TABLE t);
 
 // asynchronous interface
+extern long       lAsyPush(SATvm *pstSavm);
 extern long       lAsyInsert(SATvm *pstSavm);
 extern long       lAsyDelete(SATvm *pstSavm);
 extern long       lAsyUpdate(SATvm *pstSavm, void *pvData);

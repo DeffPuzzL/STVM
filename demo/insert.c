@@ -1,7 +1,7 @@
 #include    "tvm.h"
 #include    "tmain.h"
 
-#define    TBL_USER_INFO            21
+#define    TBL_USER_INFO            20
 
 typedef struct  __TBL_USER_INFO
 {
@@ -13,7 +13,7 @@ typedef struct  __TBL_USER_INFO
    char    user_phone[31];
 }dbUser;
 
-long    lInsertUserInfo()
+int   main(int argc, char *argv[])
 {
     dbUser  stUser;
     SATvm   *pstSavm = (SATvm *)pGetSATvm();
@@ -21,13 +21,13 @@ long    lInsertUserInfo()
     /* 初始化TBL_USER_INFO表，每张表都需要初始化一次, 对于表重建后，需要重新初始化一次。*/          
     if(RC_SUCC != lInitSATvm(pstSavm, TBL_USER_INFO))
     {
-        fprintf(stderr, "init failed, err:(%d)(%s)\n", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
+        fprintf(stderr, "init failed, err:(%d)(%s)\n", pstSavm->m_lErrno, 
+            sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;
     }
  
     conditinit(pstSavm, stUser, TBL_USER_INFO);          // 绑定变量
-
-//    stUser.acct_id = 10021;                              // 对结构体赋值
+//  stUser.acct_id = time(NULL);                         // 对结构体赋值
     strcpy(stUser.user_no,    "20180223");               // 对结构体赋值
     strcpy(stUser.user_type,  "1");                      // 对结构体赋值
     strcpy(stUser.user_nm,    "Savens Liu");             // 对结构体赋值
@@ -37,23 +37,12 @@ long    lInsertUserInfo()
  
     if(RC_SUCC != lInsert(pstSavm))      // 插入记录  
     {
-        fprintf(stderr, "Insert error:(%d)(%s)\n", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
+        fprintf(stderr, "Insert error:(%d)(%s)\n", pstSavm->m_lErrno, 
+            sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;
     }
 
-    return RC_SUCC;
-}
-
-int   main(int argc, char *argv[])
-{
-
-    if(RC_SUCC != lInsertUserInfo())
-        return RC_FAIL;
-
-	fprintf(stdout, "新增记录成功, completed successfully!!!\n");
-	fflush(stderr);
+    fprintf(stdout, "insert success, effect:%d\n", pstSavm->m_lEffect);
 
     return RC_SUCC;
 }
-
-

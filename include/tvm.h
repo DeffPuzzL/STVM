@@ -75,6 +75,7 @@ typedef long                 CREATE;
 #define OPERAYS_DELETE                      1026
 #define OPERAYS_UPDATE                      1027
 #define OPERATS_REPLACE                     1028
+#define OPERAYS_QUEPUSH                     1029
 
 #define OPERATE_REPLACE                     13
 #define OPERATE_TRCATE                      14
@@ -354,11 +355,11 @@ typedef long                 CREATE;
                                    p->pstVoid = (void *)&(s);  \
                                 }while(0);
 
-#define conditnull(p,d,t)       do{ \
+#define conditnull(p,l,t)       do{ \
                                    p->stCond.uFldcmp = 0; \
                                    p->stUpdt.uFldcmp = 0; \
                                    p->lFind = 0;  \
-                                   p->lSize = sizeof(d); \
+                                   p->lSize = l; \
                                    p->tblName = t; \
                                    p->pstVoid = NULL;  \
                                 }while(0);
@@ -370,72 +371,78 @@ typedef long                 CREATE;
                                    p->pstVoid = (void *)&v;  \
                                 }while(0);
 
-#define queuerbind(p,v,l,t)     do{ \
+#define queuebind(p,v,t)       do{ \
                                    p->lSize = l; \
                                    p->tblName = t; \
                                    p->pstVoid = (void *)v;  \
-                                }while(0);
-#define stringsetv(p,s,f,...)   vSetCodField(&p->stCond, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
-                                snprintf((s).f, sizeof((s).f), __VA_ARGS__);
+                               }while(0);
 
-#define stringset(p,s,f,v)      vSetCodField(&p->stCond, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
-                                strncpy((s).f, v, sizeof((s).f));
+#define queuenull(p,l,t)       do{ \
+                                   p->lSize = l; \
+                                   p->tblName = t; \
+                               }while(0);
 
-#define stringcpy(p,s,f,v)      vSetCodField(&p->stCond, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
-                                memcpy(&(s) + ((void *)(s).f - (void *)&(s)), (void *)v, sizeof((s).f));
+#define stringsetv(p,s,f,...)  vSetCodField(&p->stCond, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
+                               snprintf((s).f, sizeof((s).f), __VA_ARGS__);
 
-#define numberset(p,s,f,v)      vSetCodField(&p->stCond, sizeof((s).f), (char *)&(s).f - (char *)&(s)); \
-                                (s).f = v;
+#define stringset(p,s,f,v)     vSetCodField(&p->stCond, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
+                               strncpy((s).f, v, sizeof((s).f));
 
-#define decorate(p,d,f,v)       vSetDecorate(&p->stUpdt, FLEN(d, f), FPOS(d, f), v); \
-                                p->lFind = p->lFind | (v);
+#define stringcpy(p,s,f,v)     vSetCodField(&p->stCond, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
+                               memcpy(&(s) + ((void *)(s).f - (void *)&(s)), (void *)v, sizeof((s).f));
 
-#define stringreset(s,f,v)      strncpy((s).f, v, sizeof((s).f));
-#define stringresetv(s,f,...)   snprintf((s).f, sizeof((s).f), __VA_ARGS__);
-#define stringrecpy(s,f,v)      memcpy((s).f, v, sizeof((s).f));
-#define numberreset(s,f,v)      (s).f = v;
-#define conditset(p,s,f)        vSetCodField(&p->stCond, sizeof((s).f), (char *)&(s).f - (char *)&(s));
+#define numberset(p,s,f,v)     vSetCodField(&p->stCond, sizeof((s).f), (char *)&(s).f - (char *)&(s)); \
+                               (s).f = v;
 
-#define conditfld               conditset
-#define conditnum               numberset
-#define conditstr               stringset
-#define conditcpy               stringcpy
-#define conditstv               stringsetv
-#define conditrenum             numberreset
-#define conditrestr             stringreset
-#define conditrecpy             stringrecpy
-#define conditrestv             stringresetv
+#define decorate(p,d,f,v)      vSetDecorate(&p->stUpdt, FLEN(d, f), FPOS(d, f), v); \
+                               p->lFind = p->lFind | (v);
+
+#define stringreset(s,f,v)     strncpy((s).f, v, sizeof((s).f));
+#define stringresetv(s,f,...)  snprintf((s).f, sizeof((s).f), __VA_ARGS__);
+#define stringrecpy(s,f,v)     memcpy((s).f, v, sizeof((s).f));
+#define numberreset(s,f,v)     (s).f = v;
+#define conditset(p,s,f)       vSetCodField(&p->stCond, sizeof((s).f), (char *)&(s).f - (char *)&(s));
+
+#define conditfld              conditset
+#define conditnum              numberset
+#define conditstr              stringset
+#define conditcpy              stringcpy
+#define conditstv              stringsetv
+#define conditrenum            numberreset
+#define conditrestr            stringreset
+#define conditrecpy            stringrecpy
+#define conditrestv            stringresetv
 
 // UPDATE Field assignment
-#define updateinit(p, s)        memset(&(s), 0, sizeof(s));
+#define updateinit(p, s)       memset(&(s), 0, sizeof(s));
 //#define updateinit(p, s)        p->stUpdt.uFldcmp = 0; memset(&(s), 0, sizeof(s));
 
-#define stringupd(p,s,f,v)      vSetCodField(&p->stUpdt, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
-                                strncpy((s).f, v, sizeof((s).f));
+#define stringupd(p,s,f,v)     vSetCodField(&p->stUpdt, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
+                               strncpy((s).f, v, sizeof((s).f));
 
-#define stringupy(p,s,f,v)      vSetCodField(&p->stUpdt, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
-                                memcpy(&(s) + ((void *)(s).f - (void *)&(s)), (void *)v, sizeof((s).f));
+#define stringupy(p,s,f,v)     vSetCodField(&p->stUpdt, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
+                               memcpy(&(s) + ((void *)(s).f - (void *)&(s)), (void *)v, sizeof((s).f));
 
-#define numberupd(p,s,f,v)      vSetCodField(&p->stUpdt, sizeof((s).f), (char *)&(s).f - (char *)&(s)); \
-                                (s).f = v; 
+#define numberupd(p,s,f,v)     vSetCodField(&p->stUpdt, sizeof((s).f), (char *)&(s).f - (char *)&(s)); \
+                               (s).f = v; 
 
-#define updatestrv(p,s,f,...)   vSetCodField(&p->stUpdt, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
-                                snprintf((s).f, sizeof((s).f), __VA_ARGS__);
+#define updatestrv(p,s,f,...)  vSetCodField(&p->stUpdt, sizeof((s).f), (char *)(s).f - (char *)&(s)); \
+                               snprintf((s).f, sizeof((s).f), __VA_ARGS__);
 
-#define updateset(p,s,f)        vSetCodField(&p->stUpdt, sizeof((s).f), (char *)&(s).f - (char *)&(s));
-#define updatefld               updateset
-#define updatenum               numberupd
-#define updatestr               stringupd
-#define updatecpy               stringupy
-#define updatestv               updatestrv
-#define updaterenum(s,f,v)      (s).f = v;
-#define updaterestr(s,f,v)      strncpy((s).f, v, sizeof((s).f));
-#define updaterecpy(s,f,v)      memcpy((s).f, v, sizeof((s).f));
-#define updaterestv(s,f,...)    snprintf((s).f, sizeof((s).f), __VA_ARGS__);
+#define updateset(p,s,f)       vSetCodField(&p->stUpdt, sizeof((s).f), (char *)&(s).f - (char *)&(s));
+#define updatefld              updateset
+#define updatenum              numberupd
+#define updatestr              stringupd
+#define updatecpy              stringupy
+#define updatestv              updatestrv
+#define updaterenum(s,f,v)     (s).f = v;
+#define updaterestr(s,f,v)     strncpy((s).f, v, sizeof((s).f));
+#define updaterecpy(s,f,v)     memcpy((s).f, v, sizeof((s).f));
+#define updaterestv(s,f,...)   snprintf((s).f, sizeof((s).f), __VA_ARGS__);
 
-#define aliasreset(p,t)         lResetDefine(p, t);
-#define aliasvalue(p,t,s,a,v)   lSetTructByAlias(p, t, s, a, v);
-#define aliasset(p,t,s,f,v)     lSetAlias(p, t, FLEN(s, f), FPOS(s, f), v);
+#define aliasreset(p,t)        lResetDefine(p, t);
+#define aliasvalue(p,t,s,a,v)  lSetTructByAlias(p, t, s, a, v);
+#define aliasset(p,t,s,f,v)    lSetAlias(p, t, FLEN(s, f), FPOS(s, f), v);
 /*************************************************************************************************
     Table structure & index definition area  
  *************************************************************************************************/

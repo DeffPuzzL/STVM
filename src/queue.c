@@ -140,6 +140,52 @@ long    _lPop(SATvm *pstSavm, void *pvAddr, void *pvOut, Timesp *tm)
 /*************************************************************************************************
     description：pop more data from queue
     parameters:
+        tm                     --left time
+        tb                     --last record time
+    return:
+        true                   --success
+        false                  --time out
+ *************************************************************************************************/
+bool    bIsTimeOut(Timesp *tm, Timesp *tb)
+{
+    Timesp  tms;
+
+    clock_gettime(CLOCK_REALTIME, &tms);
+    if(tms.tv_nsec < tb->tv_nsec)  
+    {  
+        tb->tv_sec  = tms.tv_sec - tb->tv_sec - 1;  
+        tb->tv_nsec = 1000000000 + tms.tv_nsec - tb->tv_nsec;  
+    }
+    else 
+    {  
+        tb->tv_sec  = tms.tv_sec - tb->tv_sec;  
+        tb->tv_nsec = tms.tv_nsec - tb->tv_nsec;  
+    }  
+
+    if(tb->tv_sec > tm->tv_sec)
+        return false;
+
+    if(tm->tv_nsec < tb->tv_nsec)  
+    {  
+        tm->tv_sec  = tm->tv_sec - tb->tv_sec - 1;  
+        tm->tv_nsec = 1000000000 + tm->tv_nsec - tb->tv_nsec;
+    }
+    else 
+    {  
+        tm->tv_sec  = tm->tv_sec - tb->tv_sec;
+        tm->tv_nsec = tm->tv_nsec - tb->tv_nsec;
+    }  
+
+    if((long)tm->tv_sec < 0)
+        return false;
+
+    memcpy(tb, &tms, sizeof(Timesp));
+    return true;
+}
+
+/*************************************************************************************************
+    description：pop more data from queue
+    parameters:
         pstSavm                    --stvm handle
         pvAddr                     --address
         lExpect                    --Expected number of records
@@ -153,6 +199,7 @@ long    _lPop(SATvm *pstSavm, void *pvAddr, void *pvOut, Timesp *tm)
 long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, Timesp *tm, size_t *plOut, 
             void **ppsvOut)
 {
+    Timesp  tms;
     int     nPos;
     SHTruck *ps = NULL;
     extern  int errno;
@@ -164,13 +211,27 @@ long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, Timesp *tm, size_t 
         return RC_FAIL;
     }
 
-    for (*plOut = 0; *plOut < lExpect; )
+    for (*plOut = 0, clock_gettime(CLOCK_REALTIME, &tms); *plOut < lExpect; )
     {
+		if(!bIsTimeOut(tm, &tms)) 
+        {
+            pstSavm->m_lEffect = *plOut;
+            if(0 == pstSavm->m_lEffect)
+            {
+                TFree(*ppsvOut);
+                pstSavm->m_lErrno = NO_DATA_FOUND;
+            }
+            else
+                pstSavm->m_lErrno = MQUE_WAIT_TMO;
+            return RC_FAIL;
+        }
+
         if(0 != Futex(&pv->m_lValid, FUTEX_WAIT, 0, tm))
         {
             if(ETIMEDOUT == errno)
             {
-                if(0 == *plOut)
+                pstSavm->m_lEffect = *plOut;
+                if(0 == pstSavm->m_lEffect)
                 {
                     TFree(*ppsvOut);
                     pstSavm->m_lErrno = NO_DATA_FOUND;
@@ -187,7 +248,7 @@ long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, Timesp *tm, size_t 
             else    // EWOULDBLOCK
                 ;
         }
- 
+
         if(0 == pv->m_lValid)
             continue;
 
@@ -217,7 +278,7 @@ long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, Timesp *tm, size_t 
         ++ (*plOut);
     }
 
-    pstSavm->m_lEffect  = *plOut;
+    pstSavm->m_lEffect = *plOut;
 
     return RC_SUCC;
 }
