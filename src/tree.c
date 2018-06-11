@@ -1103,8 +1103,7 @@ char* sGetTableName(TABLE t)
  *************************************************************************************************/
 char* sGetTablePart(TABLE t, char *pszNode)
 {
-    if(0x00 == g_stTblDef[t].m_szPart[0])
-        strncpy(g_stTblDef[t].m_szPart, pszNode, MAX_FIELD_LEN);
+    Tdefstr(g_stTblDef[t].m_szPart, pszNode, MAX_FIELD_LEN);
     return  g_stTblDef[t].m_szPart;
 }
 

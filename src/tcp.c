@@ -1836,18 +1836,24 @@ long    lPollRequest(SATvm *pstSovm, SKCon *pstCon, TFace *pstFace, void *pstVoi
     
     pstCon->m_lRead = 0;
     pstCon->m_bHead = false;
-    pstRun = (RunTime *)pGetRunTime(pstSovm, pstFace->m_table);
-    pstRun->m_bAttch = pstSovm->stRunTime[pstFace->m_table].m_bAttch;
-    pstRun->m_pvAddr = pstSovm->stRunTime[pstFace->m_table].m_pvAddr;
+
+    pstRun = (RunTime *)pGetRunTime(pstSavm, pstFace->m_table);
     if(!pstRun->m_bAttch || !pstRun->m_pvAddr)
     {
 //Tlog("initial table:%d, %d, %d", pstFace->m_table, pstFace->m_enum, pstRun->m_bAttch);
-        if(RC_SUCC != lInitSATvm(pstSovm, pstFace->m_table))
+        if(RC_SUCC != lInitSATvm(pstSavm, pstFace->m_table))
         {
             pstFace->m_lRows  = 0;
             pstFace->m_lErrno = pstSovm->m_lErrno;
             return lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
         }
+
+        memcpy(&pstSovm->stRunTime[pstFace->m_table], pstRun, sizeof(RunTime));
+    }
+    else
+    {
+        pstSovm->stRunTime[pstFace->m_table].m_bAttch = pstRun->m_bAttch;
+        pstSovm->stRunTime[pstFace->m_table].m_pvAddr = pstRun->m_pvAddr;
     }
 
     if(PROTOCAL_JAVA & pstFace->m_enum)
@@ -1865,10 +1871,8 @@ long    lPollRequest(SATvm *pstSovm, SKCon *pstCon, TFace *pstFace, void *pstVoi
         pstSovm->lFind    = pstFace->m_lFind;
         pstSovm->tblName  = pstFace->m_table;
         pstSovm->lSize    = pstFace->m_lDLen;
-        lRet = lProcaOperate(pstSovm, pstCon, pstFace, pvData);
-        pstSavm->stRunTime[pstFace->m_table].m_bAttch = pstRun->m_bAttch;
-        pstSavm->stRunTime[pstFace->m_table].m_pvAddr = pstRun->m_pvAddr;
-        if(RC_SUCC == lRet)    return RC_SUCC;
+        if(RC_SUCC == lProcaOperate(pstSovm, pstCon, pstFace, pvData))
+            return RC_SUCC;
 
         return lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
     }
@@ -1885,10 +1889,8 @@ long    lPollRequest(SATvm *pstSovm, SKCon *pstCon, TFace *pstFace, void *pstVoi
         pstSovm->lFind    = pstFace->m_lFind;
         pstSovm->tblName  = pstFace->m_table;
         pstSovm->lSize    = pstFace->m_lDLen;
-        lRet = lEventOperate(pstSovm, pstCon, pstFace, pvData);
-        pstSavm->stRunTime[pstFace->m_table].m_bAttch = pstRun->m_bAttch;
-        pstSavm->stRunTime[pstFace->m_table].m_pvAddr = pstRun->m_pvAddr;
-        if(RC_SUCC == lRet)    return RC_SUCC;
+        if(RC_SUCC == lEventOperate(pstSovm, pstCon, pstFace, pvData))
+            return RC_SUCC;
 
         return lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
     }
@@ -1906,23 +1908,21 @@ void*    vEpollListen(void *pvParam)
     SKCon       *pstCon = NULL;
     TFace       *pstFace = NULL;
     epollevt    events[MAX_EVENTS];
-    BSock       epfd = *((long *)pvParam);
-    SATvm       *pstSavm = (SATvm *)calloc(1, sizeof(SATvm));
+    TThread     *pstTrd = (TThread *)pvParam;
+    SATvm       *pstSavm = (SATvm *)pCloneSATvm();
 
     pthread_detach(pthread_self());
-
-    vHoldConnect(pstSavm);
     if(RC_SUCC != lTvmBuffer(pstSavm))
         return NULL;
 
     while(g_eRun)
     {
-        nWait = epoll_wait(epfd, events, MAX_EVENTS, 500);
+        nWait = epoll_wait(pstTrd->m_epfd, events, MAX_EVENTS, 500);
         for(i = 0; i < nWait; i++)
         {   
             pstCon = (SKCon *)events[i].data.ptr;
             if(pstCon->m_isListen)
-                lEpollAccept(pstSavm, epfd, pstCon);
+                lEpollAccept(pstSavm, pstTrd->m_epfd, pstCon);
             else if(events[i].events & EPOLLIN)
             {
                if(false == pstCon->m_bHead)
@@ -1938,7 +1938,7 @@ void*    vEpollListen(void *pvParam)
                             pstCon->m_bWork = false;
                         }
                         pstCon->m_pstWork = NULL;
-                        epoll_ctl(epfd, EPOLL_CTL_DEL, pstCon->m_skSock, &events[i]);
+                        epoll_ctl(pstTrd->m_epfd, EPOLL_CTL_DEL, pstCon->m_skSock, &events[i]);
                         TFree(pstCon->pstFace);
                         TFree(pstCon->pstVoid);
                         close(pstCon->m_skSock);
@@ -1973,7 +1973,7 @@ void*    vEpollListen(void *pvParam)
                         pstCon->m_bWork = false;
                     }
                     pstCon->m_pstWork = NULL;
-                    epoll_ctl(epfd, EPOLL_CTL_DEL, pstCon->m_skSock, &events[i]);
+                    epoll_ctl(pstTrd->m_epfd, EPOLL_CTL_DEL, pstCon->m_skSock, &events[i]);
                     TFree(pstCon->pstFace);
                     TFree(pstCon->pstVoid);
                     close(pstCon->m_skSock);
@@ -1987,9 +1987,11 @@ LISTEN_ERROR:
     continue;
     }
 
-    close(epfd);
+    close(pstTrd->m_epfd);
     pstSavm->pstVoid = NULL;
     vTvmDisconnect(pstSavm);
+    pstTrd->m_bRun = false;
+    pthread_exit(NULL);
     return NULL;
 }
 
@@ -2152,7 +2154,7 @@ void    vDomainEvent(SATvm *pstSavm, long lPort)
 
     while(g_eRun)
     {
-        for(sleep(1), list = pGetDomgrp(); list; list = list->pstNext)
+        for(usleep(5000), list = pGetDomgrp(); list && g_eRun; list = list->pstNext)
         {
             if(NULL == (pstDom = (TDomain *)list->psvData))
                 continue;
@@ -2407,8 +2409,8 @@ long    lBootLocal(SATvm *pstSavm, TBoot *pstBoot, Benum eMode)
     pid_t        lPid;
     epollevt     event;
     BSock        epfd = -1;
-    pthread_t    *tPid = NULL;
     SKCon        *pstCon = NULL;
+    TThread      *pstTrd = NULL;
 
     if(!pstBoot || pstBoot->m_lBootExec < 1)    //    线程数量
     {
@@ -2462,11 +2464,18 @@ long    lBootLocal(SATvm *pstSavm, TBoot *pstBoot, Benum eMode)
     
     signal(SIGPIPE, SIG_IGN);
     signal(SIGTRAP, SIG_IGN);
-    tPid = malloc(sizeof(pthread_t) * pstBoot->m_lBootExec);
     vHoldConnect(pstSavm);
+    if(NULL == (pstTrd = (TThread *)calloc(pstBoot->m_lBootExec, sizeof(TThread))))
+    {
+        fprintf(stderr, "create pthread tid failed, %s\n", strerror(errno));
+        return RC_FAIL;
+    }
+
     for(i = 0; i < pstBoot->m_lBootExec; i ++)
     {
-        if(0 != pthread_create(&tPid[i], NULL, vEpollListen, (void*)&epfd))
+        pstTrd[i].m_epfd = epfd;
+        pstTrd[i].m_bRun = true;
+        if(0 != pthread_create(&pstTrd[i].m_tPid, NULL, vEpollListen, (void*)&pstTrd[i]))
         {
             fprintf(stderr, "create thread error, %s\n", strerror(errno));
             exit(-1);
@@ -2479,13 +2488,18 @@ long    lBootLocal(SATvm *pstSavm, TBoot *pstBoot, Benum eMode)
 
     vRemoteResouce(pstSavm, eMode, pstBoot->m_lBootPort);
     vTvmDisconnect(pstSavm);
+    
     for(i = 0; i < pstBoot->m_lBootExec; i ++)
     {
-        for(usleep(1000);ESRCH != pthread_kill(tPid[i], 0); usleep(1000));
+        usleep(500);
+        if(!pstTrd[i].m_bRun)
+            continue;
+
+        for(;(pstTrd[i].m_bRun) && (ESRCH != pthread_kill(pstTrd[i].m_tPid, 0)); usleep(1000));
     }
 
     vCloseDomain();
-    TFree(tPid);
+    TFree(pstTrd);
     Tlog("Service thread exits");
     exit(-1);
 }

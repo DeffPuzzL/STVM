@@ -26,7 +26,7 @@ int   main(int argc, char *argv[])
     }
 
     queueinit(pstSavm, stUser, QUEUE_USER_INFO);
-    if(RC_SUCC != lTvmPop(pstSavm, (void *)&stUser, QUE_NORMAL))      // 插入记录  
+    if(RC_SUCC != lTvmPop(pstSavm, (void *)&stUser, QUE_NORMAL))
     {
         fprintf(stderr, "Pop error:(%d)(%s)\n", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;

@@ -404,8 +404,7 @@ long    _lParseAlias(SATvm *pstSavm, char *pszTable, char *pszField, char *pszAl
     strncpy(stIndex.m_szPart, sgetvalue(pszTable, "@", 2), sizeof(stIndex.m_szPart));    
     strncpy(stIndex.m_szTable, sgetvalue(pszTable, "@", 1), sizeof(stIndex.m_szTable));  
     supper(stIndex.m_szTable);                                                          
-    if(0x00 == stIndex.m_szPart[0])                                                     
-        strcpy(stIndex.m_szPart, sGetNode());                                           
+    Tdefstr(stIndex.m_szPart, sGetNode(), sizeof(stIndex.m_szPart));
 
     if(RC_SUCC != lGetTblIndex(pstSavm, stIndex.m_szTable, stIndex.m_szPart, &stIndex))
         return RC_FAIL;
@@ -1358,8 +1357,7 @@ long    _lShowTableInfo(SATvm *pstSavm, char *pszTable, bool bRmt)
     strncpy(stIndex.m_szPart, sgetvalue(pszTable, "@", 2), sizeof(stIndex.m_szPart));
     strncpy(stIndex.m_szTable, sgetvalue(pszTable, "@", 1), sizeof(stIndex.m_szTable));
     supper(stIndex.m_szTable);
-    if(0x00 == stIndex.m_szPart[0])
-        strcpy(stIndex.m_szPart, sGetNode());
+    Tdefstr(stIndex.m_szPart, sGetNode(), sizeof(stIndex.m_szPart));
 
     if(bRmt)
     {
@@ -2013,11 +2011,8 @@ long    _lExeUpdate(SATvm *pstSavm, TIndex *pstIndex, void *pvNew, char *pvData,
     else
         lRet = lUpdate(pstSavm, (void *)pvNew);
     if(RC_SUCC != lRet)
-    {
-        fprintf(stderr, "update table (%s) failure, %s\n", pstIndex->m_szTable, 
-            sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;
-    }
+
     lTime -= lGetTiskTime();
 
     fprintf(stdout, "---(%ld) records updated, ep(%d), %s---\n", pstSavm->m_lEffect, pstSavm->m_lEType, 
@@ -2078,13 +2073,9 @@ long    _lExeInsert(SATvm *pstSavm, TIndex *pstIndex, void *pvInsert, bool bRmt)
     else
         lRet = lInsert(pstSavm);
     if(RC_SUCC != lRet)
-    {
-        fprintf(stderr, "insert table (%s) failure, %s\n", pstIndex->m_szTable, 
-            sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;
-    }
-    lTime -= lGetTiskTime();
 
+    lTime -= lGetTiskTime();
     fprintf(stdout, "---(%ld) records inserted, %s---\n", pstSavm->m_lEffect, sGetCostTime(-1 * lTime));
     return RC_SUCC;
 }
@@ -2205,11 +2196,8 @@ long    _lCountSelect(SATvm *pstSavm, TIndex *pstIndex, char *pvData, bool bRmt)
     else
         lRet = lCount(pstSavm, &lSum);
     if(lRet != RC_SUCC)
-    {
-        fprintf(stderr, "count table (%s) failure, %s\n", pstIndex->m_szTable, 
-            sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;
-    }
+
     lTime -= lGetTiskTime();
 
     fprintf(stdout, "COUNT(*)\n");
@@ -2241,13 +2229,9 @@ long    _lExeClick(SATvm *pstSavm, TIndex *pstIndex, char *pvData, bool bRmt)
     else
         lRet = lClick(pstSavm, &ulHits);
     if(lRet != RC_SUCC)
-    {
-        fprintf(stderr, "count table (%s) failure, %s\n", pstIndex->m_szTable, 
-            sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;
-    }
-    lTime -= lGetTiskTime();
 
+    lTime -= lGetTiskTime();
     fprintf(stdout, "HITSPOT\n");
     fprintf(stdout, "%zu\n", ulHits);
     fflush(stdout);
@@ -2822,8 +2806,7 @@ long    _lParseSelect(SATvm *pstSavm, char *pszTable, char *pszField, char *pszW
     strncpy(stIndex.m_szPart, sgetvalue(pszTable, "@", 2), sizeof(stIndex.m_szPart));
     strncpy(stIndex.m_szTable, sgetvalue(pszTable, "@", 1), sizeof(stIndex.m_szTable));
     supper(stIndex.m_szTable);    
-    if(0x00 == stIndex.m_szPart[0])
-        strcpy(stIndex.m_szPart, sGetNode());
+    Tdefstr(stIndex.m_szPart, sGetNode(), sizeof(stIndex.m_szPart));
 
     if(!strcmp(stIndex.m_szTable, "SEQUENCE"))
         return lParseSequece(pstSavm, stIndex.m_szPart, pszField, bRmt);
@@ -3034,8 +3017,7 @@ long    _lParseUpdate(SATvm *pstSavm, char *pszTable, char *pszField, char *pszW
     strncpy(stIndex.m_szPart, sgetvalue(pszTable, "@", 2), sizeof(stIndex.m_szPart));
     strncpy(stIndex.m_szTable, sgetvalue(pszTable, "@", 1), sizeof(stIndex.m_szTable));
     supper(stIndex.m_szTable);
-    if(0x00 == stIndex.m_szPart[0])
-        strcpy(stIndex.m_szPart, sGetNode());
+    Tdefstr(stIndex.m_szPart, sGetNode(), sizeof(stIndex.m_szPart));
 
     if(bRmt)
     {
@@ -3178,8 +3160,7 @@ long    _lParseDelete(SATvm *pstSavm, char *pszTable,  char *pszWhere, bool bRmt
     strncpy(stIndex.m_szPart, sgetvalue(pszTable, "@", 2), sizeof(stIndex.m_szPart));
     strncpy(stIndex.m_szTable, sgetvalue(pszTable, "@", 1), sizeof(stIndex.m_szTable));
     supper(stIndex.m_szTable);
-    if(0x00 == stIndex.m_szPart[0])
-        strcpy(stIndex.m_szPart, sGetNode());
+    Tdefstr(stIndex.m_szPart, sGetNode(), sizeof(stIndex.m_szPart));
 
     if(bRmt)
     {
@@ -3439,8 +3420,7 @@ long    _lParseInsert(SATvm *pstSavm, char *pszTable, char *pszField, char *pszV
     strncpy(stIndex.m_szPart, sgetvalue(pszTable, "@", 2), sizeof(stIndex.m_szPart));
     strncpy(stIndex.m_szTable, sgetvalue(pszTable, "@", 1), sizeof(stIndex.m_szTable));
     supper(stIndex.m_szTable);    
-    if(0x00 == stIndex.m_szPart[0])
-        strcpy(stIndex.m_szPart, sGetNode());
+    Tdefstr(stIndex.m_szPart, sGetNode(), sizeof(stIndex.m_szPart));
 
     if(bRmt)
     {
@@ -3597,8 +3577,7 @@ long    _lTruncateSyntax(SATvm *pstSavm, char *pszSQL, bool bRmt)
     strncpy(stIndex.m_szPart, sgetvalue(szTable, "@", 2), sizeof(stIndex.m_szPart));
     strncpy(stIndex.m_szTable, sgetvalue(szTable, "@", 1), sizeof(stIndex.m_szTable));
     supper(stIndex.m_szTable);
-    if(0x00 == stIndex.m_szPart[0])
-        strcpy(stIndex.m_szPart, sGetNode());
+    Tdefstr(stIndex.m_szPart, sGetNode(), sizeof(stIndex.m_szPart));
 
     if(bRmt)
     {
@@ -3654,8 +3633,7 @@ long    _lDropSyntax(SATvm *pstSavm, char *pszSQL, bool bRmt)
     strncpy(stIndex.m_szPart, sgetvalue(szTable, "@", 2), sizeof(stIndex.m_szPart));
     strncpy(stIndex.m_szTable, sgetvalue(szTable, "@", 1), sizeof(stIndex.m_szTable));
     supper(stIndex.m_szTable);
-    if(0x00 == stIndex.m_szPart[0])
-        strcpy(stIndex.m_szPart, sGetNode());
+    Tdefstr(stIndex.m_szPart, sGetNode(), sizeof(stIndex.m_szPart));
 
     if(bRmt)
     {
@@ -3717,8 +3695,7 @@ long    _lLoadSyntax(SATvm *pstSavm, char *pszSQL)
     strncpy(stIndex.m_szPart, sgetvalue(szParam, "@", 2), sizeof(stIndex.m_szPart));
     strncpy(stIndex.m_szTable, sgetvalue(szParam, "@", 1), sizeof(stIndex.m_szTable));
     supper(stIndex.m_szTable);
-    if(0x00 == stIndex.m_szPart[0])
-        strcpy(stIndex.m_szPart, sGetNode());
+    Tdefstr(stIndex.m_szPart, sGetNode(), sizeof(stIndex.m_szPart));
 
     if(RC_SUCC != lGetTblIndex(pstSavm, stIndex.m_szTable, stIndex.m_szPart, &stIndex))
         return RC_FAIL;
@@ -4073,6 +4050,8 @@ long    lStopSystem(TBoot *pstBoot, char *pszApp)
     memset(szCmd, 0, sizeof(szCmd));
     snprintf(szCmd, sizeof(szCmd), "ps -u %s|grep -E \"%s|%s\"|awk '{print $1}'", 
         getenv("LOGNAME"), TVM_LOCAL_SERV, TVM_REMOTE_DOM);
+
+    if(!bIsTvmBoot())    return RC_SUCC;
 
     if(TVM_BOOT_CLUSTER == pstBoot->m_lBootType)
         lOfflineNotify(pstSavm, pstBoot->m_lBootPort);
@@ -4880,7 +4859,15 @@ int     main(int argc, char *argv[])
     TBoot   *pstBoot = (TBoot *)pBootInitial();
 
     if(3 == argc && !strcmp(argv[1], "-c"))
+    {
+        if(bIsTvmBoot() && TVM_BOOT_SIMPLE != pstBoot->m_lBootType) 
+        {
+            fprintf(stderr, "build failure, please stop STVM and do this !\n");
+            return RC_FAIL;
+        }
+
         return lMakeConfig(argv[2]);
+    }
     else if(3 == argc && !strcmp(argv[1], "-o"))
         return lUnmakeConfig(argv[2]);
 
@@ -4892,7 +4879,7 @@ int     main(int argc, char *argv[])
 
     vCheckTvmEnv();
     memset(szCom, 0, sizeof(szCom));
-    while(-1 != (iChoose = getopt(argc, argv, "w::s::p::f::d:m:t:i:u:l:c:v?::")))
+    while(-1 != (iChoose = getopt(argc, argv, "w::s::p::f::d:m:t:i:u::l:c:v?::")))
     {
         switch(iChoose)
         {
@@ -4933,9 +4920,12 @@ int     main(int argc, char *argv[])
             if(0x59 != lRet && 0x79 != lRet)
                 return RC_SUCC;
             if(RC_SUCC != lResetLock(pstSavm, atol(optarg)))
-                fprintf(stderr, "重置表(%ld)失败, %s\n", atol(optarg), sGetTError(pstSavm->m_lErrno));
+            {
+                fprintf(stderr, "reset table (%ld) lock failure,  %s\n", atol(optarg), 
+                    sGetTError(pstSavm->m_lErrno));
+            }
             else
-                fprintf(stderr, "重置表(%ld)完成, completed successfully !!\n", atol(optarg));
+                fprintf(stderr, "reset table (%ld) success, completed successfully !!\n", atol(optarg));
             return RC_SUCC;
         case    'v':
             fprintf(stdout, "%s\n", sGetTVMVers());
@@ -4949,14 +4939,11 @@ int     main(int argc, char *argv[])
 
     if(1 == lAction)
     {
-        vTableStruck(atol(optarg));
+        vTableStruck(table);
         return RC_SUCC;
     }
-    else if(2 == lAction)
-    {
-//        vTableStruck(atol(optarg));
-        return RC_SUCC;
-    }
+    else if(3 == lAction)
+        return lUnuseDump(pstSavm, table);
     
     vPrintFunc(basename(argv[0]));
     return RC_SUCC;

@@ -791,7 +791,7 @@ long    lParseResouce(SATvm *pstSavm, char *pszFile, long *plCout, TDomain **pps
                 strncpy(pv->m_szIp, sgetvalue(szValue, ":", 1), sizeof(pv->m_szIp));
                 pv->m_lPort = atol(sgetvalue(szValue, ":", 2));
             }
-            else if(!strcasecmp(szTarg, "TIMTOUT"))
+            else if(!strcasecmp(szTarg, "TIMEOUT"))
                 pv->m_lTimeOut = atol(szValue);
             else if(!strcasecmp(szTarg, "MAXTRY"))
                 pv->m_lTryMax = atol(szValue);
@@ -819,7 +819,7 @@ long    lParseResouce(SATvm *pstSavm, char *pszFile, long *plCout, TDomain **pps
         }
 
         pv->m_lGroup   = pv->m_lGroup > 0 ? pv->m_lGroup : 1;
-        pv->m_lTimeOut = pv->m_lTimeOut > 0 ? pv->m_lTimeOut : 5;
+        pv->m_lTimeOut = pv->m_lTimeOut > 0 ? pv->m_lTimeOut : 2;
         pv->m_lTryMax  = pv->m_lTryMax > 0 ? pv->m_lTryMax : 3;
         pv->m_lKeepLive= pv->m_lKeepLive > 0 ? pv->m_lKeepLive : 30;
     }
@@ -925,20 +925,19 @@ long    lParseDomain(char *pszBuffer, TIndex *pstIndex, TDomain *pstDom, long *p
         }
     }
     
-    pv->m_lTryMax = 0;
+    pv->m_lTryMax   = 0;
     pv->m_lLastTime = 0;
-    pv->m_lStatus = RESOURCE_INIT;
-    pv->m_table = pstIndex->m_table;
-    pv->m_lPort = pstDom->m_lPort;
-    pv->m_lGroup = pstDom->m_lGroup;
+    pv->m_lStatus   = RESOURCE_INIT;
+    pv->m_table     = pstIndex->m_table;
+    pv->m_lPort     = pstDom->m_lPort;
+    pv->m_lGroup    = pstDom->m_lGroup;
     pv->m_lKeepLive = pstDom->m_lKeepLive;
-    pv->m_lTimeOut = pstDom->m_lTimeOut;
-    pv->m_lTryMax = pstDom->m_lTryMax;
+    pv->m_lTimeOut  = pstDom->m_lTimeOut;
+    pv->m_lTryMax   = pstDom->m_lTryMax;
     strcpy(pv->m_szIp, pstDom->m_szIp);
     strcpy(pv->m_szTable, pstIndex->m_szTable);
     strcpy(pv->m_szOwner, pstDom->m_szOwner);
-    if(!strlen(pv->m_szPart))
-        strcpy(pv->m_szPart, pstDom->m_szOwner);
+    Tdefstr(pv->m_szPart, pstDom->m_szOwner, sizeof(pv->m_szPart));
 
     return RC_SUCC;
 }
@@ -1242,7 +1241,7 @@ long    lUnmakeConfig(char *pszFile)
             if(!bf)
             {
                 bf = !bf;
-                fprintf(fp, "GROUP=%ld TIMTOUT=%ld MAXTRY=%ld KEEPALIVE=%ld\n", 
+                fprintf(fp, "GROUP=%ld TIMEOUT=%ld MAXTRY=%ld KEEPALIVE=%ld\n", 
                     pstDomain[j].m_lGroup, pstDomain[j].m_lTimeOut, pstDomain[j].m_lTryMax, 
                     pstDomain[j].m_lKeepLive);
             }

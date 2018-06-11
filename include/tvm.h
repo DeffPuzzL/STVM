@@ -198,10 +198,11 @@ typedef long                 CREATE;
 #define IS_TRUCK_NRML(p)                    ((p)->m_chTag == DATA_TRUCK_NRML)
 #define IS_TRUCK_LOCK(p)                    ((p)->m_chTag == DATA_TRUCK_LOCK)
 #define SET_DATA_TRUCK(p, type)             ((p)->m_chTag =  type)
-#define TFree(p)                             if(p) { free(p); p = NULL; }
-#define TFgrp(p)                             do{vDeleteRowgrp(p);p = NULL;}while(0);
-#define TFlst(p)                             do{vDestroyList(p);p = NULL;}while(0);
-#define TClose(f)                            if(f) { fclose(f); f = NULL; }
+#define TFree(p)                            if(p) { free(p); p = NULL; }
+#define TFgrp(p)                            do{vDeleteRowgrp(p);p = NULL;}while(0);
+#define TFlst(p)                            do{vDestroyList(p);p = NULL;}while(0);
+#define TClose(f)                           if(f) { fclose(f); f = NULL; }
+#define Tdefstr(d,s,l)                      if(0 == *d) strncpy(d, s, l);
 
 #define Futex(a,o,v,t)                      syscall(SYS_futex, a, o, v, t, NULL, 0)
 #define Tremohold(p,r)                      if(p->m_bHold) r->m_lState = RESOURCE_ABLE;
@@ -676,6 +677,13 @@ typedef    struct    __TVM_BOOT_PARAM
     char    m_szNode[MAX_FIELD_LEN];
     char    m_szLog[MAX_STRIG_LEN];
 }TBoot;
+
+typedef struct __THREAD_RUN
+{
+    BSock        m_epfd;
+    pthread_t    m_tPid;
+    bool         m_bRun;
+}TThread;
 
 /*************************************************************************************************
    STVM user define

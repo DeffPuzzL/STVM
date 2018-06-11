@@ -11,7 +11,7 @@ LDFLAG=-shared -g
 OUTLIB=../lib
 OUTBIN=../bin
 
-OBJFILE=tree.o sem.o msg.o tcp.o str.o list.o conf.o queue.o
+OBJFILE=tree.o sem.o msg.o tcp.o str.o list.o conf.o queue.o func.o
 TARGET=$(OUTLIB)/libstvm.a
 #TARDLL=$(OUTLIB)/libstvm.so
 TARVER=$(OUTLIB)/libstvm.so.1.2
