@@ -310,6 +310,7 @@ typedef long                 CREATE;
 #define MQUE_WAIT_ERR                       98          // queue waiting for failure
 #define MQUE_CRTE_BIG                       99          // created queue is too big
 #define NOT_SUPPT_OPT                      100          // queue does not support this operation
+#define SERV_NOT_CONN                      101          // not connect server
 
 /*************************************************************************************************
      创建表宏函数

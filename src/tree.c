@@ -153,6 +153,7 @@ static char    tvmerr[128][MAX_INDEX_LEN] = {
     "queue waiting for failure",
     "created queue is too big",
     "queue does not support this operation",
+	"not connect to server",
     "",
 };
 

@@ -4397,7 +4397,7 @@ long    lTvmPopup(SATvm *pstSavm, size_t lExpect, time_t lTime, size_t *plOut, v
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -4466,7 +4466,7 @@ long    lTvmPop(SATvm *pstSavm, void *pvOut, Uenum eWait)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -4528,7 +4528,7 @@ long    lTvmSelect(SATvm *pstSavm, void *pvOut)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -4596,7 +4596,7 @@ long    lTvmQuery(SATvm *pstSavm, size_t *plOut, void **ppvOut)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -4670,7 +4670,7 @@ long    lAsyDelete(SATvm *pstSavm)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -4720,7 +4720,7 @@ long    lAsyUpdate(SATvm *pstSavm, void *pvData)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -4777,7 +4777,7 @@ long    lAsyReplace(SATvm *pstSavm, void *pvData)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -4832,7 +4832,7 @@ long    lAsyInsert(SATvm *pstSavm)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -4880,7 +4880,7 @@ long   lAsyPush(SATvm *pstSavm)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -4928,7 +4928,7 @@ long   lTvmPush(SATvm *pstSavm)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -4987,7 +4987,7 @@ long    lTvmInsert(SATvm *pstSavm)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -5046,7 +5046,7 @@ long    lTvmDelete(SATvm *pstSavm)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -5108,7 +5108,7 @@ long    lTvmUpdate(SATvm *pstSavm, void *pvData)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -5177,7 +5177,7 @@ long    lTvmReplace(SATvm *pstSavm, void *pvData)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -5244,7 +5244,7 @@ long    lTvmTruncate(SATvm *pstSavm, TABLE t)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -5300,7 +5300,7 @@ long    lTvmGroup(SATvm *pstSavm, size_t *plOut, void **ppvOut)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -5381,7 +5381,7 @@ long    lTvmCount(SATvm *pstSavm, size_t *plCount)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -5443,7 +5443,7 @@ long    lTvmExtreme(SATvm *pstSavm, void *pvOut)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -5515,7 +5515,7 @@ long    lTvmDropTable(SATvm *pstSavm, TABLE t)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -5569,7 +5569,7 @@ long    lTvmRenameTable(SATvm *pstSavm, TABLE to, TABLE tn)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -5624,7 +5624,7 @@ long    lTvmClick(SATvm *pstSavm, ulong *pulHits)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -5692,7 +5692,7 @@ long    lTvmSelectSeque(SATvm *pstSavm, char *pszSQName, ulong *pulNumber)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -5755,7 +5755,7 @@ long    lTvmSetSequence(SATvm *pstSavm, char *pszSQName, ulong uStart)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -5811,7 +5811,7 @@ long    lTvmRebuildIndex(SATvm *pstSavm, TABLE t)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -5863,7 +5863,7 @@ long    lTvmResetLock(SATvm *pstSavm, TABLE t)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 
@@ -5915,7 +5915,7 @@ long    _lTvmWork(SATvm *pstSavm, Benum eWork)
     pstRun = (RunTime *)pGetRunTime(pstSavm, 0);
     if(!pstRun->pstVoid)
     {
-        pstSavm->m_lErrno = DOM_NOT_INITL;
+        pstSavm->m_lErrno = SERV_NOT_CONN;
         return RC_FAIL;
     }
 

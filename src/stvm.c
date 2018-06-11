@@ -4892,7 +4892,7 @@ int     main(int argc, char *argv[])
 
     vCheckTvmEnv();
     memset(szCom, 0, sizeof(szCom));
-    while(-1 != (iChoose = getopt(argc, argv, "w::s::p::f::d:m:t:i:l:c:v?::")))
+    while(-1 != (iChoose = getopt(argc, argv, "w::s::p::f::d:m:t:i:u:l:c:v?::")))
     {
         switch(iChoose)
         {
@@ -4904,9 +4904,13 @@ int     main(int argc, char *argv[])
         case    'p':
             vPrintParam(optarg);
             return RC_SUCC;
+        case    'u':
+            lAction |= 2;
+            break; 
         case    't':
-            vTableStruck(atol(optarg));
-            return RC_SUCC;
+            lAction |= 1;
+            table = atol(optarg);
+            break; 
         case    'd':
             if(RC_SUCC != lDumpTable(pstSavm, atol(optarg)))
                 fprintf(stderr, "dump table error, %s\n", sGetTError(pstSavm->m_lErrno));
@@ -4941,6 +4945,17 @@ int     main(int argc, char *argv[])
         default:
             break;
         }
+    }
+
+    if(1 == lAction)
+    {
+        vTableStruck(atol(optarg));
+        return RC_SUCC;
+    }
+    else if(2 == lAction)
+    {
+//        vTableStruck(atol(optarg));
+        return RC_SUCC;
     }
     
     vPrintFunc(basename(argv[0]));
