@@ -117,6 +117,7 @@ long    _lPop(SATvm *pstSavm, void *pvAddr, void *pvOut, Timesp *tm)
         break;
     }
     
+retry:
     /* at least cost one vaild */
     if(pv->m_lMaxRow > (nPos = __sync_add_and_fetch(&pv->m_lListOfs, 1)))
         ;
@@ -125,10 +126,7 @@ long    _lPop(SATvm *pstSavm, void *pvAddr, void *pvOut, Timesp *tm)
     
     ps = (PSHTruck)pGetNode(pvAddr, pv->m_lData + pv->m_lTruck * nPos);
     if(IS_TRUCK_NULL(ps))
-    {
-        pstSavm->m_lErrno = SVR_EXCEPTION;
-        return RC_FAIL;
-    }
+        goto retry;
 
     memcpy(pvOut, ps->m_pvData, pv->m_lReSize);
     SET_DATA_TRUCK(ps, DATA_TRUCK_NULL);

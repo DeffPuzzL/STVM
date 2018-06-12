@@ -717,6 +717,7 @@ extern    void*    pGetBoot();
 extern    long     lDefaultBoot();
 extern    TBoot*   pBootInitial();
 extern    size_t   lGetTblRow(TABLE t);
+extern    size_t   lGetTableSize(TABLE t);
 extern    long     lGetPermit(TABLE t);
 extern    long     lGetRowSize(TABLE t);
 extern    TblDef*  pGetTblDef(TABLE t);

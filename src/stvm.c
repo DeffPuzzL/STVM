@@ -39,6 +39,7 @@ extern long     lShutdownTvm();
 extern void     vSetNode(char *s);
 extern long     lStartupTvm(TBoot *pstBoot);
 extern long     lMountTable(SATvm *pstSavm, char *pszFile);
+extern long     lUnuseDump(SATvm *pstSavm, TABLE t);
 
 /*************************************************************************************************
     description：get stvm version 
@@ -4051,9 +4052,7 @@ long    lStopSystem(TBoot *pstBoot, char *pszApp)
     snprintf(szCmd, sizeof(szCmd), "ps -u %s|grep -E \"%s|%s\"|awk '{print $1}'", 
         getenv("LOGNAME"), TVM_LOCAL_SERV, TVM_REMOTE_DOM);
 
-    if(!bIsTvmBoot())    return RC_SUCC;
-
-    if(TVM_BOOT_CLUSTER == pstBoot->m_lBootType)
+    if(TVM_BOOT_SIMPLE != pstBoot->m_lBootType)
         lOfflineNotify(pstSavm, pstBoot->m_lBootPort);
 
     if(NULL == (fp = popen(szCmd, "r")))

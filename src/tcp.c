@@ -1424,7 +1424,7 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
         if(RC_SUCC != lPush(pstSavm))
         {
             Tlog("Asypush error, %d, %s", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
-            pstFace->m_lRows  = pstSavm->m_lEffect;
+            pstFace->m_lRows = pstSavm->m_lEffect;
         }
         return RC_SUCC;
     case  OPERAYS_INSERT:
@@ -1841,7 +1841,7 @@ long    lPollRequest(SATvm *pstSovm, SKCon *pstCon, TFace *pstFace, void *pstVoi
     if(!pstRun->m_bAttch || !pstRun->m_pvAddr)
     {
 //Tlog("initial table:%d, %d, %d", pstFace->m_table, pstFace->m_enum, pstRun->m_bAttch);
-        if(RC_SUCC != lInitSATvm(pstSavm, pstFace->m_table))
+        if(RC_SUCC != lAttchTable(pstSavm, pstFace->m_table))
         {
             pstFace->m_lRows  = 0;
             pstFace->m_lErrno = pstSovm->m_lErrno;
@@ -1880,9 +1880,9 @@ long    lPollRequest(SATvm *pstSovm, SKCon *pstCon, TFace *pstFace, void *pstVoi
     {
         if(NULL == (pvData = pParsePacket(pstSovm, pstVoid, pstFace, pvData, pstFace->m_lRows)))
         {
-               pstFace->m_lErrno = RESOU_DISABLE;
-               pvData = (void *)pstFace + sizeof(TFace);
-               return lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
+            pstFace->m_lErrno = RESOU_DISABLE;
+            pvData = (void *)pstFace + sizeof(TFace);
+            return lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
         }
 
         pstSovm->pstVoid  = pstVoid;
@@ -1942,6 +1942,7 @@ void*    vEpollListen(void *pvParam)
                         TFree(pstCon->pstFace);
                         TFree(pstCon->pstVoid);
                         close(pstCon->m_skSock);
+                        TFree(pstCon);
                         continue;
                     }
                     
@@ -1977,6 +1978,7 @@ void*    vEpollListen(void *pvParam)
                     TFree(pstCon->pstFace);
                     TFree(pstCon->pstVoid);
                     close(pstCon->m_skSock);
+                    TFree(pstCon);
                 }
             }
         }
@@ -2629,11 +2631,7 @@ long    lOfflineNotify(SATvm *pstSavm, long lPort)
     stFace.m_table  = SYS_TVM_INDEX;
     stFace.m_enum   = OPERATE_DOMLOFF;
     if(RC_FAIL == (skSock = skConnectServer(pstSavm, LOCAL_HOST_IP, lPort, false, 5)))
-    {
-        fprintf(stderr, "Connect server %s:%ld error, %s\n", LOCAL_HOST_IP, lPort,
-            sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;
-    }
 
     if(sizeof(TFace) != lSendBuffer(skSock, (void *)&stFace, sizeof(TFace)))
     {
