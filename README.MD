@@ -4,6 +4,7 @@ STVM（truck of Virtual memory table）是一个开源的使用ANSI C语言编�
 
 *   支持SQL基础语法(insert、update、delete、select、group order、count，first)功能。
 *   支持序列
+*   拥有百万级别队列(gcc版本 >= 4.12)
 *   支持唯一索引、查询索引和组合索引
 *   支持多字动态查询
 *   内置记录点击量(热点数据)
@@ -118,7 +119,6 @@ STVM也提供一个类型sqlpuls类型简单工具。
 **下本版本：**
 * 1、新增多机资源共享方式。
 * 2、JAVA接口开发
-
 
 
 **不定时更新**
