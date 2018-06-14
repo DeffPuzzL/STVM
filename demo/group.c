@@ -28,7 +28,7 @@ int   main(int argc, char *argv[])
     }
  
     conditinit(pstSavm, stUser, TBL_USER_INFO);                // 绑定变量
-    stringset(pstSavm, stUser, user_type, "1");                // 查询条件赋值
+    conditstr(pstSavm, stUser, user_type, "1");                // 查询条件赋值
  
     decorate(pstSavm, dbUser, user_nm, GROUP_BY | ORDER_ASC);
     decorate(pstSavm, dbUser, user_phone, GROUP_BY | ORDER_DESC);

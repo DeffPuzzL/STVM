@@ -82,7 +82,7 @@ long    _lPush(SATvm *pstSavm, void *pvAddr)
  *************************************************************************************************/
 long    _lPop(SATvm *pstSavm, void *pvAddr, void *pvOut, Timesp *tm)
 {
-    int     nPos;
+    int     nPos, i = 0;
     SHTruck *ps = NULL;
     extern  int errno;
     TblDef  *pv = (TblDef *)pvAddr;
@@ -126,7 +126,15 @@ retry:
     
     ps = (PSHTruck)pGetNode(pvAddr, pv->m_lData + pv->m_lTruck * nPos);
     if(IS_TRUCK_NULL(ps))
+    {
+        if((++ i) > pv->m_lMaxRow)
+        {
+            pstSavm->m_lErrno = SVR_EXCEPTION;
+            return RC_FAIL;
+        }
+
         goto retry;
+    }
 
     memcpy(pvOut, ps->m_pvData, pv->m_lReSize);
     SET_DATA_TRUCK(ps, DATA_TRUCK_NULL);
