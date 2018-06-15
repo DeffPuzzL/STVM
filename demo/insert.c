@@ -5,7 +5,7 @@
 
 typedef struct  __TBL_USER_INFO
 {
-   long    acct_id;
+   llong   acct_id;
    char    user_no[21];
    char    user_type[2];
    char    user_nm[81];
@@ -27,8 +27,8 @@ int   main(int argc, char *argv[])
     }
  
     conditinit(pstSavm, stUser, TBL_USER_INFO);          // 绑定变量
-//  stUser.acct_id = time(NULL);                         // 对结构体赋值
-    strcpy(stUser.user_no,    "20180224");               // 对结构体赋值
+//  stUser.acct_id = 7;                                  // 对结构体赋值
+    strcpy(stUser.user_no,    "20180223");               // 对结构体赋值
     strcpy(stUser.user_type,  "1");                      // 对结构体赋值
     strcpy(stUser.user_nm,    "Savens Liu");             // 对结构体赋值
     strcpy(stUser.user_addr,  "China");                  // 对结构体赋值

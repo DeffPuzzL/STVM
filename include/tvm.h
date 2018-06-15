@@ -312,6 +312,7 @@ typedef long                 CREATE;
 #define MQUE_CRTE_BIG                       99          // created queue is too big
 #define NOT_SUPPT_OPT                      100          // queue does not support this operation
 #define SERV_NOT_CONN                      101          // not connect server
+#define PART_AR_EXIST                      102          // partion already exist
 
 /*************************************************************************************************
      创建表宏函数

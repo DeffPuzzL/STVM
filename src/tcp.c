@@ -1939,8 +1939,8 @@ void*    vEpollListen(void *pvParam)
                         }
                         pstCon->m_pstWork = NULL;
                         epoll_ctl(pstTrd->m_epfd, EPOLL_CTL_DEL, pstCon->m_skSock, &events[i]);
-                        TFree(pstCon->pstFace);
                         TFree(pstCon->pstVoid);
+                        TFree(pstCon->pstFace);
                         close(pstCon->m_skSock);
                         TFree(pstCon);
                         continue;
@@ -1975,8 +1975,8 @@ void*    vEpollListen(void *pvParam)
                     }
                     pstCon->m_pstWork = NULL;
                     epoll_ctl(pstTrd->m_epfd, EPOLL_CTL_DEL, pstCon->m_skSock, &events[i]);
-                    TFree(pstCon->pstFace);
                     TFree(pstCon->pstVoid);
+                    TFree(pstCon->pstFace);
                     close(pstCon->m_skSock);
                     TFree(pstCon);
                 }
@@ -2665,12 +2665,12 @@ long    lOfflineNotify(SATvm *pstSavm, long lPort)
  *************************************************************************************************/
 long    lPullNotify(SATvm *pstSavm, TDomain *pstDom, size_t lCount)
 {
-    TblDef  stDet;
+    TblDef  sf;
     TFace   stFace;
     void    *pvData = NULL;
     size_t  lRecv, i, lRow = 0, lValid;
 
-    memset(&stDet, 0, sizeof(TblDef));
+    memset(&sf, 0, sizeof(TblDef));
     memset(&stFace, 0, sizeof(TFace));
     stFace.m_lRows  = 0;
     stFace.m_lFind  = lCount;
@@ -2697,13 +2697,13 @@ long    lPullNotify(SATvm *pstSavm, TDomain *pstDom, size_t lCount)
     fprintf(stdout, "\nCopying table(%s)(%d) define ..", pstDom->m_szTable, pstDom->m_table);
     fflush(stdout);
     usleep(5000);
-    if(sizeof(TblDef) != lRecvBuffer(pstDom->m_skSock, (void *)&stDet, sizeof(TblDef)))
+    if(sizeof(TblDef) != lRecvBuffer(pstDom->m_skSock, (void *)&sf, sizeof(TblDef)))
         goto ERR_PULLNOTIFY;
 
-    lValid = stDet.m_lValid;
-    stDet.m_lValid = 0;
-    stDet.m_lGroup = 0;
-    if(RC_SUCC != lCustomTable(pstSavm, pstDom->m_table, stDet.m_lMaxRow, &stDet))
+    lValid = sf.m_lValid;
+    sf.m_lValid = 0;
+    sf.m_lGroup = 0;
+    if(RC_SUCC != lCustomTable(pstSavm, pstDom->m_table, sf.m_lMaxRow, &sf))
     {
         fprintf(stderr, "Create table(%d) failed, err:(%d)(%s)\n", pstDom->m_table, 
             pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
@@ -2711,7 +2711,7 @@ long    lPullNotify(SATvm *pstSavm, TDomain *pstDom, size_t lCount)
     }
 
     fprintf(stdout, "\b\bcompleted .\nCopy table(%s) success, table maxrow:%ld, valid:%ld "
-        " completed .\n", stDet.m_szTable, stDet.m_lMaxRow, lValid);
+        " completed .\n", sf.m_szTable, sf.m_lMaxRow, lValid);
     fflush(stdout);
     if(NULL == (pstSavm = (SATvm *)pInitSATvm(pstDom->m_table)))
     {
@@ -2723,10 +2723,10 @@ long    lPullNotify(SATvm *pstSavm, TDomain *pstDom, size_t lCount)
     fprintf(stdout, "Start Copy table(%s)(%s)rows:[", pstDom->m_szTable, pstDom->m_szPart);
     fprintf(stdout, "\033[?25l");
 
-    if(NULL == (pvData = (char *)malloc(lCount * stDet.m_lReSize))) 
+    if(NULL == (pvData = (char *)malloc(lCount * sf.m_lReSize))) 
         goto ERR_PULLNOTIFY;
 
-    pstSavm->lSize  = stDet.m_lReSize;
+    pstSavm->lSize  = sf.m_lReSize;
     while(1)
     {
         if(sizeof(TFace) != lRecvBuffer(pstDom->m_skSock, (void *)&stFace, sizeof(TFace)))
@@ -2735,13 +2735,13 @@ long    lPullNotify(SATvm *pstSavm, TDomain *pstDom, size_t lCount)
         if(0 == stFace.m_lRows)    
             break;
 
-        lRecv = stDet.m_lReSize * stFace.m_lRows;
+        lRecv = sf.m_lReSize * stFace.m_lRows;
         if(lRecv != lRecvBuffer(pstDom->m_skSock, (char *)pvData, lRecv))
             goto ERR_PULLNOTIFY;
         
         for(i = 0; i < stFace.m_lRows; i ++)
         {    
-            pstSavm->pstVoid = (void *)pvData + i * stDet.m_lReSize;
+            pstSavm->pstVoid = (void *)pvData + i * sf.m_lReSize;
             if(RC_SUCC != lInsert(pstSavm))
                 goto ERR_PULLNOTIFY;
 

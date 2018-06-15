@@ -288,12 +288,12 @@ int   sizecn(TblKey *pstKey, long lfld)
     parameters：
         s                          --string
         len                        --strlen length
-        pstTde                     --Table define
+        ps                         --Table define
     return：
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-long    lAnalysHead(char *s, long len, TblDef *pstTde)
+long    lAnalysHead(char *s, long len, TblDef *ps)
 {
     long    i, n;
     char    szTemp[512], szHead[512], szTar[64], *p = NULL;
@@ -324,34 +324,34 @@ long    lAnalysHead(char *s, long len, TblDef *pstTde)
         sltrim(szTar);
         if(!strcasecmp(szTar, "TABLE"))
         {
-            pstTde->m_table = atol(sfieldvalue(szTemp + 4, "=", 2));
-            if(pstTde->m_table < 5)
+            ps->m_table = atol(sfieldvalue(szTemp + 4, "=", 2));
+            if(ps->m_table < 5)
             {
                 fprintf(stderr, "definition table error\n");
                 return RC_FAIL;
             }
         }
         else if(!strcasecmp(szTar, "TABLESPACE"))
-            pstTde->m_lMaxRow = atol(sfieldvalue(szTemp + 4, "=", 2));
+            ps->m_lMaxRow = atol(sfieldvalue(szTemp + 4, "=", 2));
         else
         {
             fprintf(stderr, "Unrecognized command\n*%s\n", szTemp);
             return RC_FAIL;
         }
     }
-    if(pstTde->m_table < 5)
+    if(ps->m_table < 5)
     {
         fprintf(stderr, "table not define\n");
         return RC_FAIL;
     }
 
-    if(pstTde->m_lMaxRow <= 0)
+    if(ps->m_lMaxRow <= 0)
     {
         fprintf(stderr, "table size node define\n");
         return RC_FAIL;
     }
 
-    strcpy(pstTde->m_szPart, sGetNode());
+    strcpy(ps->m_szPart, sGetNode());
 
     return RC_SUCC;
 }
@@ -359,21 +359,21 @@ long    lAnalysHead(char *s, long len, TblDef *pstTde)
 /*************************************************************************************************
     description：alias table field name
     parameters：
-        pstTde                     --Table define
+        ps                         --Table define
         pszField                   --string
         pszAlias                   --string
     return：
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-long    lTableAliase(TblDef *pstTde, char *pszField, char *pszAlias)
+long    lTableAliase(TblDef *ps, char *pszField, char *pszAlias)
 {
     long    i = 0;
     TblKey  *pv = NULL;
 
-    for(i = 0; i < pstTde->m_lIdxNum; i ++)
+    for(i = 0; i < ps->m_lIdxNum; i ++)
     {
-        pv = &pstTde->m_stKey[i];
+        pv = &ps->m_stKey[i];
         if(strcmp(pv->m_szField, pszField))
             continue;
 
@@ -388,7 +388,6 @@ long    lTableAliase(TblDef *pstTde, char *pszField, char *pszAlias)
 /*************************************************************************************************
     description：alias the table field name
     parameters：
-        pstTde                     --Table define
         pszField                   --string
         pszAlias                   --string
     return：
@@ -435,12 +434,12 @@ long    _lParseAlias(SATvm *pstSavm, char *pszTable, char *pszField, char *pszAl
     parameters：
         s                          --string
         len                        --strlen length
-        pstTde                     --Table define
+        ps                         --Table define
     return：
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-long    lAnalysTable(char *s, long len, TblDef *pstTde)
+long    lAnalysTable(char *s, long len, TblDef *ps)
 {
     long    i, n, k;
     TblKey  *pv = NULL;
@@ -455,7 +454,7 @@ long    lAnalysTable(char *s, long len, TblDef *pstTde)
 
     strncpy(szField, s, len);
     strimabout(szField, "(", ")");
-    for(i = 0, n = lgetstrnum(szField, "\n"), pstTde->m_lIdxNum = 0; i < n; i ++)
+    for(i = 0, n = lgetstrnum(szField, "\n"), ps->m_lIdxNum = 0; i < n; i ++)
     {
         memset(szTemp, 0, sizeof(szTemp));
         strncpy(szTemp, sfieldvalue(szField, "\n", i + 1), sizeof(szTemp));
@@ -466,7 +465,7 @@ long    lAnalysTable(char *s, long len, TblDef *pstTde)
         if('#' == szTemp[0] || !strncmp(szTemp, "--", 2) || !strlen(szTemp))
             continue;
 
-        pv = &pstTde->m_stKey[pstTde->m_lIdxNum];
+        pv = &ps->m_stKey[ps->m_lIdxNum];
         strncpy(pv->m_szField, sfieldvalue(szTemp, " ", 1), MAX_FIELD_LEN);
         strcpy(pv->m_szAlias, pv->m_szField);
         if(!strlen(pv->m_szField))
@@ -535,7 +534,7 @@ long    lAnalysTable(char *s, long len, TblDef *pstTde)
             return RC_FAIL;
         }
 
-        pstTde->m_lIdxNum ++;
+        ps->m_lIdxNum ++;
     }
 
     return RC_SUCC;
@@ -545,13 +544,13 @@ long    lAnalysTable(char *s, long len, TblDef *pstTde)
     description：creates the table index 
     parameters：
         s                          --string
-        pstTde                     --Table define
+        ps                         --Table define
         em                         --index type
     return：
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-long    lIndexField(char *s, TblDef *pstTde, Uenum em)
+long    lIndexField(char *s, TblDef *ps, Uenum em)
 {
     long    i, n;
     TblKey  *pstKey = NULL;
@@ -560,68 +559,68 @@ long    lIndexField(char *s, TblDef *pstTde, Uenum em)
     n = lfieldnum(s, ",");
     if(UNQIUE == em)
     {
-        for(i = 0, pstTde->m_lIType |= UNQIUE, pstTde->m_lIdxUp = 0; i < n; i ++)
+        for(i = 0, ps->m_lIType |= UNQIUE, ps->m_lIdxUp = 0; i < n; i ++)
         {
             memset(szField, 0, MAX_FIELD_LEN);
             strncpy(szField, sfieldvalue(s, ",", i + 1), MAX_FIELD_LEN);
             strimcrlf(szField);
             strimall(szField);
-            if(NULL == (pstKey = pFindField(pstTde->m_stKey, pstTde->m_lIdxNum, szField)))
+            if(NULL == (pstKey = pFindField(ps->m_stKey, ps->m_lIdxNum, szField)))
                 return RC_FAIL;
 
-            strcpy(pstTde->m_stIdxUp[pstTde->m_lIdxUp].m_szField, szField);
-            pstTde->m_stIdxUp[pstTde->m_lIdxUp].m_lFrom = pstKey->m_lFrom;
-            pstTde->m_stIdxUp[pstTde->m_lIdxUp].m_lLen  = pstKey->m_lLen;
-            pstTde->m_stIdxUp[pstTde->m_lIdxUp].m_lAttr = pstKey->m_lAttr;
-            pstTde->m_lIdxLen += pstKey->m_lLen;
-            pstTde->m_lIdxUp ++;
+            strcpy(ps->m_stIdxUp[ps->m_lIdxUp].m_szField, szField);
+            ps->m_stIdxUp[ps->m_lIdxUp].m_lFrom = pstKey->m_lFrom;
+            ps->m_stIdxUp[ps->m_lIdxUp].m_lLen  = pstKey->m_lLen;
+            ps->m_stIdxUp[ps->m_lIdxUp].m_lAttr = pstKey->m_lAttr;
+            ps->m_lIdxLen += pstKey->m_lLen;
+            ps->m_lIdxUp ++;
         }
-        if(0 == pstTde->m_lIdxUp)
+        if(0 == ps->m_lIdxUp)
             return RC_FAIL;
         return RC_SUCC;
     }
     else if(NORMAL == em)
     {
-        for(i = 0, pstTde->m_lIType |= NORMAL, pstTde->m_lGrpUp = 0; i < n; i ++)
+        for(i = 0, ps->m_lIType |= NORMAL, ps->m_lGrpUp = 0; i < n; i ++)
         {
             memset(szField, 0, MAX_FIELD_LEN);
             strncpy(szField, sfieldvalue(s, ",", i + 1), MAX_FIELD_LEN);
             strimcrlf(szField);
             strimall(szField);
-            if(NULL == (pstKey = pFindField(pstTde->m_stKey, pstTde->m_lIdxNum, szField)))
+            if(NULL == (pstKey = pFindField(ps->m_stKey, ps->m_lIdxNum, szField)))
                 return RC_FAIL;
 
-            strcpy(pstTde->m_stGrpUp[pstTde->m_lGrpUp].m_szField, szField);
-            pstTde->m_stGrpUp[pstTde->m_lGrpUp].m_lFrom = pstKey->m_lFrom;
-            pstTde->m_stGrpUp[pstTde->m_lGrpUp].m_lLen  = pstKey->m_lLen;
-            pstTde->m_stGrpUp[pstTde->m_lGrpUp].m_lAttr = pstKey->m_lAttr;
-            pstTde->m_lGrpLen += pstKey->m_lLen;
-            pstTde->m_lGrpUp ++;
+            strcpy(ps->m_stGrpUp[ps->m_lGrpUp].m_szField, szField);
+            ps->m_stGrpUp[ps->m_lGrpUp].m_lFrom = pstKey->m_lFrom;
+            ps->m_stGrpUp[ps->m_lGrpUp].m_lLen  = pstKey->m_lLen;
+            ps->m_stGrpUp[ps->m_lGrpUp].m_lAttr = pstKey->m_lAttr;
+            ps->m_lGrpLen += pstKey->m_lLen;
+            ps->m_lGrpUp ++;
         }
 
-        if(0 == pstTde->m_lGrpUp)
+        if(0 == ps->m_lGrpUp)
             return RC_FAIL;
         return RC_SUCC;
     }
     else if(HASHID == em)
     {
-        for(i = 0, pstTde->m_lIType |= HASHID, pstTde->m_lGrpUp = 0; i < n; i ++)
+        for(i = 0, ps->m_lIType |= HASHID, ps->m_lGrpUp = 0; i < n; i ++)
         {
             memset(szField, 0, MAX_FIELD_LEN);
             strncpy(szField, sfieldvalue(s, ",", i + 1), MAX_FIELD_LEN);
             strimcrlf(szField);
             strimall(szField);
-            if(NULL == (pstKey = pFindField(pstTde->m_stKey, pstTde->m_lIdxNum, szField)))
+            if(NULL == (pstKey = pFindField(ps->m_stKey, ps->m_lIdxNum, szField)))
                 return RC_FAIL;
-            strcpy(pstTde->m_stGrpUp[pstTde->m_lGrpUp].m_szField, szField);
-            pstTde->m_stGrpUp[pstTde->m_lGrpUp].m_lFrom = pstKey->m_lFrom;
-            pstTde->m_stGrpUp[pstTde->m_lGrpUp].m_lLen  = pstKey->m_lLen;
-            pstTde->m_stGrpUp[pstTde->m_lGrpUp].m_lAttr = pstKey->m_lAttr;
-            pstTde->m_lGrpLen += pstKey->m_lLen;
-            pstTde->m_lGrpUp ++;
+            strcpy(ps->m_stGrpUp[ps->m_lGrpUp].m_szField, szField);
+            ps->m_stGrpUp[ps->m_lGrpUp].m_lFrom = pstKey->m_lFrom;
+            ps->m_stGrpUp[ps->m_lGrpUp].m_lLen  = pstKey->m_lLen;
+            ps->m_stGrpUp[ps->m_lGrpUp].m_lAttr = pstKey->m_lAttr;
+            ps->m_lGrpLen += pstKey->m_lLen;
+            ps->m_lGrpUp ++;
         }
 
-        if(0 == pstTde->m_lGrpUp)
+        if(0 == ps->m_lGrpUp)
             return RC_FAIL;
         return RC_SUCC;
     }
@@ -633,13 +632,13 @@ long    lIndexField(char *s, TblDef *pstTde, Uenum em)
     description：analysis of the header index
     parameters：
         s                          --string
-        pstTde                     --Table define
+        ps                         --Table define
         em                         --index type
     return：
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-long    lAnalysIndex(char *s, long len, TblDef *pstTde)
+long    lAnalysIndex(char *s, long len, TblDef *ps)
 {
     long    i, n, k, lRet;
     char    szIndex[1024], szTemp[256], *p = NULL;
@@ -657,7 +656,7 @@ long    lAnalysIndex(char *s, long len, TblDef *pstTde)
 
     strncpy(szIndex, s, len);
     strcat(szIndex, "\n");
-    for(i = 0, k = 0, n = lgetstrnum(szIndex, "\n"), pstTde->m_lIType = 0; i < n; i ++)
+    for(i = 0, k = 0, n = lgetstrnum(szIndex, "\n"), ps->m_lIType = 0; i < n; i ++)
     {
         memset(szTemp, 0, sizeof(szTemp));
         strncpy(szTemp, sfieldvalue(szIndex, "\n", i + 1), sizeof(szTemp));
@@ -678,7 +677,7 @@ long    lAnalysIndex(char *s, long len, TblDef *pstTde)
             }
 
             k |= UNQIUE;
-            lRet = lIndexField(p, pstTde, UNQIUE);
+            lRet = lIndexField(p, ps, UNQIUE);
         }
         else if(p = strcasestr(szTemp, "create index"))
         {
@@ -690,7 +689,7 @@ long    lAnalysIndex(char *s, long len, TblDef *pstTde)
             }
 
             k |= NORMAL;
-            lRet = lIndexField(p, pstTde, NORMAL);
+            lRet = lIndexField(p, ps, NORMAL);
         }
         else if(p = strcasestr(szTemp, "create hash"))
         {
@@ -702,7 +701,7 @@ long    lAnalysIndex(char *s, long len, TblDef *pstTde)
             }
 
             k |= NORMAL;
-            lRet = lIndexField(p, pstTde, HASHID);
+            lRet = lIndexField(p, ps, HASHID);
         }
         else if(p = strcasestr(szTemp, "comment on "))
         {
@@ -735,9 +734,9 @@ long    lAnalysIndex(char *s, long len, TblDef *pstTde)
                 p = szComm + strlen(szTable) + 1;
                 strimabout(p, "'", "'");
                 strimabout(p, "\"", "\"");
-                if(!strcmp(szTable, pstTde->m_szTable)) // current table
+                if(!strcmp(szTable, ps->m_szTable)) // current table
                 {
-                    if(RC_SUCC != (lRet = lTableAliase(pstTde, p, szAlias)))
+                    if(RC_SUCC != (lRet = lTableAliase(ps, p, szAlias)))
                     {
                         fprintf(stderr, "table %s field:%s not exist\n", szTable, p);
                         return RC_FAIL;
@@ -755,7 +754,7 @@ long    lAnalysIndex(char *s, long len, TblDef *pstTde)
             }
             else
             {
-                if(RC_SUCC != (lRet = lTableAliase(pstTde, szComm, szAlias)))
+                if(RC_SUCC != (lRet = lTableAliase(ps, szComm, szAlias)))
                 {
                     fprintf(stderr, "table %s field:%s not exist\n", szTable, szComm);
                     return RC_FAIL;
@@ -814,11 +813,11 @@ char*   sGetTabName(char *pszTable)
 /*************************************************************************************************
     description：creates the table struck 
     parameters：
-        pstTde                     --Table define
+        ps                         --Table define
         em                         --index type
     return：
  *************************************************************************************************/
-void    vCreateStruck(TblDef *pstTde, bool bf)
+void    vCreateStruck(TblDef *ps, bool bf)
 {
     long    i;
     TblKey  *pv = NULL;
@@ -826,14 +825,14 @@ void    vCreateStruck(TblDef *pstTde, bool bf)
     fprintf(stdout, "\n#Table definition\n");
     if(bf)
     {
-        fprintf(stdout, "\nset TABLE=%d\n", pstTde->m_table);
-        fprintf(stdout, "set TABLESPACE=%ld\n\n", pstTde->m_lMaxRow);
+        fprintf(stdout, "\nset TABLE=%d\n", ps->m_table);
+        fprintf(stdout, "set TABLESPACE=%ld\n\n", ps->m_lMaxRow);
     }
 
-    fprintf(stdout, "typedef struct __%s\n{\n", supper(pstTde->m_szTable));
-    for(i = 0; i < pstTde->m_lIdxNum; i ++)
+    fprintf(stdout, "typedef struct __%s\n{\n", supper(ps->m_szTable));
+    for(i = 0; i < ps->m_lIdxNum; i ++)
     {
-        pv = &pstTde->m_stKey[i];
+        pv = &ps->m_stKey[i];
         if(FIELD_CHAR == pv->m_lAttr)
         {
             if(1 == pv->m_lLen)
@@ -877,42 +876,42 @@ void    vCreateStruck(TblDef *pstTde, bool bf)
         }
     }
 
-    fprintf(stdout, "}%s;\n", sGetTabName(supper(pstTde->m_szTable)));
+    fprintf(stdout, "}%s;\n", sGetTabName(supper(ps->m_szTable)));
 
     if(bf)
     {
         fprintf(stdout, "\n-- Create indexes\n");
-        if(pstTde->m_lIType & UNQIUE)
+        if(ps->m_lIType & UNQIUE)
         {
-            pv = &pstTde->m_stIdxUp[0];
+            pv = &ps->m_stIdxUp[0];
             fprintf(stdout, "create unique index (%s", pv->m_szField);
-            for(i = 1; i < pstTde->m_lIdxUp; i ++)
+            for(i = 1; i < ps->m_lIdxUp; i ++)
             {
-                pv = &pstTde->m_stKey[i];
+                pv = &ps->m_stKey[i];
                 fprintf(stdout, ", %s", pv->m_szField);
             }
             fprintf(stdout, ");\n");
         }
 
-        if(pstTde->m_lIType & NORMAL)
+        if(ps->m_lIType & NORMAL)
         {
-            pv = &pstTde->m_stGrpUp[0];
+            pv = &ps->m_stGrpUp[0];
             fprintf(stdout, "create index (%s", pv->m_szField);
-            for(i = 1; i < pstTde->m_lGrpUp; i ++)
+            for(i = 1; i < ps->m_lGrpUp; i ++)
             {
-                pv = &pstTde->m_stKey[i];
+                pv = &ps->m_stKey[i];
                 fprintf(stdout, ", %s", pv->m_szField);
             }
             fprintf(stdout, ");\n");
 
         }
-        else if(pstTde->m_lIType & HASHID)
+        else if(ps->m_lIType & HASHID)
         {
-            pv = &pstTde->m_stGrpUp[0];
+            pv = &ps->m_stGrpUp[0];
             fprintf(stdout, "create hash (%s", pv->m_szField);
-            for(i = 1; i < pstTde->m_lGrpUp; i ++)
+            for(i = 1; i < ps->m_lGrpUp; i ++)
             {
-                pv = &pstTde->m_stKey[i];
+                pv = &ps->m_stKey[i];
                 fprintf(stdout, ", %s", pv->m_szField);
             }
             fprintf(stdout, ");\n");
@@ -961,7 +960,7 @@ void    vTableStruck(TABLE t)
 long    lDefineTable(char *pszCreate, char *pszTable)
 {
     long    i;
-    TblDef  stTde;
+    TblDef  sf;
     char    *p = NULL, *q = NULL;
     SATvm   *pstSavm = (SATvm *)pGetSATvm();
 
@@ -972,14 +971,14 @@ long    lDefineTable(char *pszCreate, char *pszTable)
         return RC_FAIL;
     }
 
-    memset(&stTde, 0, sizeof(TblDef));
-    if(RC_SUCC != lAnalysHead(pszCreate, p - pszCreate, &stTde))
+    memset(&sf, 0, sizeof(TblDef));
+    if(RC_SUCC != lAnalysHead(pszCreate, p - pszCreate, &sf))
         return RC_FAIL;
 
-    strncpy(stTde.m_szTable, sfieldvalue(p + 12, "\n", 1), sizeof(stTde.m_szTable));
-    srtrim(stTde.m_szTable);
-    sltrim(stTde.m_szTable);
-    supper(stTde.m_szTable);
+    strncpy(sf.m_szTable, sfieldvalue(p + 12, "\n", 1), sizeof(sf.m_szTable));
+    srtrim(sf.m_szTable);
+    sltrim(sf.m_szTable);
+    supper(sf.m_szTable);
 
     if(NULL == (q = strcasestr(p, ";")))
     {
@@ -987,22 +986,22 @@ long    lDefineTable(char *pszCreate, char *pszTable)
         return RC_FAIL;
     }
 
-    if(RC_SUCC != lAnalysTable(p + 12, q - p - 12, &stTde))
+    if(RC_SUCC != lAnalysTable(p + 12, q - p - 12, &sf))
         return RC_FAIL;
 
-    stTde.m_lReSize = sizecn(stTde.m_stKey, stTde.m_lIdxNum);
-    stTde.m_lTruck  = stTde.m_lReSize + sizeof(SHTruck);
+    sf.m_lReSize = sizecn(sf.m_stKey, sf.m_lIdxNum);
+    sf.m_lTruck  = sf.m_lReSize + sizeof(SHTruck);
 
-    if(RC_SUCC != lAnalysIndex(q + 1, strlen(q + 1), &stTde))
+    if(RC_SUCC != lAnalysIndex(q + 1, strlen(q + 1), &sf))
         return RC_FAIL;
 
-    if(RC_SUCC != lCustomTable(pstSavm, stTde.m_table, stTde.m_lMaxRow, &stTde))
+    if(RC_SUCC != lCustomTable(pstSavm, sf.m_table, sf.m_lMaxRow, &sf))
     {
         fprintf(stderr, "create table error: %s\n", sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;
     }
 
-    strcpy(pszTable, stTde.m_szTable);
+    strcpy(pszTable, sf.m_szTable);
     return RC_SUCC;
 }
 
@@ -1023,7 +1022,7 @@ void    vAppendTabList(char *pszTable)
     strcat(g_stCustom.m_pszWord, ",");
 
     g_stCustom.m_lWord = lgetstrnum(g_stCustom.m_pszWord, ",");
-	return ;
+    return ;
 }
 
 /*************************************************************************************************
@@ -1223,7 +1222,7 @@ long    lShowTables(SATvm *pstSavm)
         if(!strcmp(pstIndex[i].m_szPart, pstIndex[i].m_szOwner))
             strcpy(szTable, pstIndex[i].m_szTable);
         else
-            snprintf(szTable, sizeof(szTable), "%s@%s", pstIndex[i].m_szPart, pstIndex[i].m_szTable);
+            snprintf(szTable, sizeof(szTable), "%s@%s", pstIndex[i].m_szTable, pstIndex[i].m_szPart);
         fprintf(stdout, "%3d   %s\n", pstIndex[i].m_table, szTable);
     }
 
@@ -1321,7 +1320,7 @@ void    vTableAmount()
         if(!strcmp(pstIndex[i].m_szPart, pstIndex[i].m_szOwner))
             strcpy(szTable, pstIndex[i].m_szTable);
         else
-            snprintf(szTable, sizeof(szTable), "%s@%s", pstIndex[i].m_szPart, pstIndex[i].m_szTable);
+            snprintf(szTable, sizeof(szTable), "%s@%s", pstIndex[i].m_szTable, pstIndex[i].m_szPart);
 
         vPrintAmount(pstIndex[i].m_table, pstIndex[i].m_lType, szTable, 
              lGetTblValid(pstIndex[i].m_table), lGetTblRow(pstIndex[i].m_table));
@@ -4350,8 +4349,8 @@ void    vInitialCustom()
     g_stCustom.m_pszKey = NULL;
     g_stCustom.m_pszWord = NULL;
 
-   	g_stCustom.m_pszKey = (char *)calloc(1, ALLOC_CMD_LEN);
-   	g_stCustom.m_pszWord = (char *)calloc(1, ALLOC_CMD_LEN);
+    g_stCustom.m_pszKey = (char *)calloc(1, ALLOC_CMD_LEN);
+    g_stCustom.m_pszWord = (char *)calloc(1, ALLOC_CMD_LEN);
     if(NULL == g_stCustom.m_pszKey || NULL == g_stCustom.m_pszWord)
         exit(-1);
 
@@ -4363,7 +4362,7 @@ void    vInitialCustom()
    //select nextval from SEQUENCE@SEQ_TEST
     snprintf(g_stCustom.m_pszWord, ALLOC_CMD_LEN, "SET,FROM,WHERE,COUNT(1),MAX,MIN,NEXTVAL,"
         "ORDER BY,GROUP BY,SEQUENCE@,SYS_TVM_FIELD,SYS_TVM_DOMAIN,SYS_TVM_SEQUE,TABLE,INTO,"
-        "ON,INFO,INDEX,VALUES,DEBUG [ON|OFF],SHOWMODE [ROW|COLUMN],SHOWSIZE [NUM],CLICK,");
+        "ON,INFO,INDEX,VALUES,DEBUG [ON|OFF],SHOWMODE [ROW|COLUMN],SHOWSIZE [NUM],CLICK,TO,");
     g_stCustom.m_lWord = lgetstrnum(g_stCustom.m_pszWord, ",");
  
     rl_attempted_completion_function = pMatchCompletion;
@@ -4385,7 +4384,7 @@ void    vSQLStatement(int argc, char *argv[])
     system("stty erase ^?");
     system("stty erase ^H");
     fprintf(stdout, "\n%s\n", sFuncVersion());
-	vInitialCustom();
+    vInitialCustom();
  //  initialize_readline();
     for(i = 2; i < argc; i ++)
     {

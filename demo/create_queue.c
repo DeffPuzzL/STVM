@@ -32,7 +32,7 @@ int   main(int argc, char *argv[])
     SATvm   *pstSavm = (SATvm *)pGetSATvm();
 
 //    if(RC_SUCC != lCreateQueue(pstSavm, QUEUE_USER_INFO, 1000000, sizeof(szMsg), ""))
-    if(RC_SUCC != lTableQueue(pstSavm, QUEUE_USER_INFO, 50000, lQueueUserInfo))
+    if(RC_SUCC != lTableQueue(pstSavm, QUEUE_USER_INFO, 30, lQueueUserInfo))
     {
 	    fprintf(stderr, "create queue %d failed, err: %s\n", QUEUE_USER_INFO, sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;

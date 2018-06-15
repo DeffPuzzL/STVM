@@ -1,2 +1,2 @@
 #!/bin/bash
-stvm SQL --showmode=row --showsize=5
+stvm SQL --showmode=row --showsize=8

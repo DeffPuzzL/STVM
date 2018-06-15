@@ -206,7 +206,7 @@ long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, Timesp *tm, size_t 
             void **ppsvOut)
 {
     Timesp  tms;
-    int     nPos;
+    int     nPos, i = 0;
     SHTruck *ps = NULL;
     extern  int errno;
     TblDef  *pv = (TblDef *)pvAddr;
@@ -219,7 +219,7 @@ long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, Timesp *tm, size_t 
 
     for (*plOut = 0, clock_gettime(CLOCK_REALTIME, &tms); *plOut < lExpect; )
     {
-		if(!bIsTimeOut(tm, &tms)) 
+        if(!bIsTimeOut(tm, &tms)) 
         {
             pstSavm->m_lEffect = *plOut;
             if(0 == pstSavm->m_lEffect)
@@ -264,6 +264,7 @@ long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, Timesp *tm, size_t 
             continue;
         }
     
+retrys:
         /* at least cost one vaild */
         if(pv->m_lMaxRow > (nPos = __sync_add_and_fetch(&pv->m_lListOfs, 1)))
             ;
@@ -273,10 +274,15 @@ long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, Timesp *tm, size_t 
         ps = (PSHTruck)pGetNode(pvAddr, pv->m_lData + pv->m_lTruck * nPos);
         if(IS_TRUCK_NULL(ps))
         {
-            *plOut = 0;
-            TFree(*ppsvOut);
-            pstSavm->m_lErrno = SVR_EXCEPTION;
-            return RC_FAIL;
+            if((++ i) > pv->m_lMaxRow)
+            {
+                *plOut = 0;
+                TFree(*ppsvOut);
+                pstSavm->m_lErrno = SVR_EXCEPTION;
+                return RC_FAIL;
+            }
+
+            goto retrys;
         }
 
         memcpy(*ppsvOut + (*plOut) * pv->m_lReSize, ps->m_pvData, pv->m_lReSize);
