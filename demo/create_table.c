@@ -39,7 +39,7 @@ int   main(int argc, char *argv[])
 
     if(RC_SUCC != lCreateTable(pstSavm, TBL_USER_INFO, 1000, lCreateUserInfo))
     {
-	    fprintf(stderr, "create table %d failed, err: %s\n", TBL_USER_INFO, sGetTError(pstSavm->m_lErrno));
+        fprintf(stderr, "create table %d failed, err: %s\n", TBL_USER_INFO, sGetTError(pstSavm->m_lErrno));
         return RC_FAIL;
     }
 

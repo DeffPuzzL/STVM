@@ -25,7 +25,7 @@ int   main(int argc, char *argv[])
         return RC_FAIL;
     }
 
-	updateinit(pstSavm, stUpd);
+    updateinit(pstSavm, stUpd);
     conditinit(pstSavm, stUser, TBL_USER_INFO);                // 绑定变量
     conditstr(pstSavm, stUser, user_no, "20180529");           // 查询条件赋值
     conditstr(pstSavm, stUser, user_type, "1");                // 查询条件赋值

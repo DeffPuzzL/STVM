@@ -9403,8 +9403,8 @@ long    lExportFile(TABLE t, char *pszFile, char *pszFlag)
         return RC_FAIL;
     }
 
-    pstRun->m_lCurLine = 1;
-    pstRun->m_lCurType = EXE_PLAN_ALL;
+    pstRun->m_lCurLine  = 1;
+    pstRun->m_lCurType  = EXE_PLAN_ALL;
     pstRun->m_pvCurAddr = pstRun->m_pvAddr;    
     if(TYPE_MQUEUE == pstRun->m_lType)
     {

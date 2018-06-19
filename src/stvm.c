@@ -1438,7 +1438,7 @@ void    vPrintIndex()
 
     pstSavm->bSearch = TYPE_SYSTEM;
     pstSavm->tblName = SYS_TVM_INDEX;
-    pstSavm->lSize = sizeof(TIndex);
+    pstSavm->lSize   = sizeof(TIndex);
     lRet = lTableDeclare(pstSavm);
     if(RC_SUCC != lRet)
     {

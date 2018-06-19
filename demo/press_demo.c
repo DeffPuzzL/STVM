@@ -20,7 +20,7 @@ long    lSelectUserInfo()
     SATvm   *pstSavm = (SATvm *)pGetSATvm();
  
     /* 初始化TBL_USER_INFO表，每张表都需要初始化一次, 对于表重建后，需要重新初始化一次。*/          
-	vHoldConnect(pstSavm); // 让进程始终与STVM 保持链接，可以大大提高效率
+    vHoldConnect(pstSavm); // 让进程始终与STVM 保持链接，可以大大提高效率
     if(RC_SUCC != lInitSATvm(pstSavm, TBL_USER_INFO))
     {
         fprintf(stderr, "init failed, err:(%d)(%s)\n", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
