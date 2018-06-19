@@ -6925,6 +6925,38 @@ long    _lFetchGroup(SATvm *pstSavm, RunTime *pstRun, TABLE t, void *psvOut)
 }
 
 /*************************************************************************************************
+    description：Queue-fetch the data as truck
+    parameters:
+        pstSavm                    --stvm handle
+        pstRun                     --table handle
+        t                          --table 
+        psvout                     --result data
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    _lFetchQueue(SATvm *pstSavm, RunTime *pstRun, TABLE t, void *psvOut)
+{
+    SHTruck *pstTruck = NULL;
+    TblDef  *pv = (TblDef *)pstRun->m_pvAddr;
+    size_t  lOffset = lGetListOfs(t) + pstRun->m_lCurLine;
+
+    for(; pstRun->m_lCurLine <= pv->m_lMaxRow; pstRun->m_lCurLine ++)
+    {
+        pstTruck = (PSHTruck)pGetNode(pstRun->m_pvAddr, 
+            pv->m_lData + pv->m_lTruck * (lOffset % pv->m_lMaxRow));
+        if(IS_TRUCK_NULL(pstTruck))
+            continue;
+        
+        pstRun->m_lCurLine ++;
+        memcpy(psvOut, pstTruck->m_pvData, pv->m_lReSize);
+        return RC_SUCC;
+    }
+
+    return RC_NOTFOUND;
+}
+
+/*************************************************************************************************
     description：Cursor-fetch the data as truck
     parameters:
         pstSavm                    --stvm handle
@@ -7106,7 +7138,12 @@ long    lTableFetch(SATvm *pstSavm, void *psvOut)
     else if(EXE_PLAN_GRP == pstRun->m_lCurType)
         lRet = _lFetchGroup(pstSavm, pstRun, pstSavm->tblName, psvOut);
     else
-        lRet = _lFetchTruck(pstSavm, pstRun, pstSavm->tblName, psvOut);
+    {
+        if(TYPE_MQUEUE == pstRun->m_lType)
+            lRet = _lFetchQueue(pstSavm, pstRun, pstSavm->tblName, psvOut);
+        else
+            lRet = _lFetchTruck(pstSavm, pstRun, pstSavm->tblName, psvOut);
+    }
     if(RC_NOTFOUND == lRet)
     {
         pstRun->m_pvCurAddr = NULL;
@@ -9313,37 +9350,6 @@ long    lImportTable(TABLE t, size_t lCount, void *psvData)
 }
 
 /*************************************************************************************************
-    description：Queue-fetch the data as truck
-    parameters:
-        pstSavm                    --stvm handle
-        pstRun                     --table handle
-        t                          --table 
-        psvout                     --result data
-    return:
-        RC_SUCC                    --success
-        RC_FAIL                    --failure
- *************************************************************************************************/
-long    _lFetchQueue(SATvm *pstSavm, RunTime *pstRun, TABLE t, void *psvOut)
-{
-    SHTruck *pstTruck = NULL;
-    TblDef  *pv = (TblDef *)pstRun->m_pvAddr;
-    size_t  lRow, lOffset = pv->m_lListOfs + 1;
-
-    for(; pstRun->m_lCurLine <= pv->m_lMaxRow; lOffset ++, pstRun->m_lCurLine ++)
-    {
-        pstTruck = (PSHTruck)pGetNode(pstRun->m_pvAddr, 
-            pv->m_lData + pv->m_lTruck * (lOffset % pv->m_lMaxRow));
-        if(IS_TRUCK_NULL(pstTruck))
-            continue;
-
-        memcpy(psvOut, pstTruck->m_pvData, pv->m_lReSize);
-        return RC_SUCC;
-    }
-
-    return RC_NOTFOUND;
-}
-
-/*************************************************************************************************
     description：Export the memory table to a file
     parameters:
         t                          --table 
@@ -9404,7 +9410,10 @@ long    lExportFile(TABLE t, char *pszFile, char *pszFlag)
     {
         while(RC_NOTFOUND != _lFetchQueue(pstSavm, pstRun, t, psvOut))
         {
-            fwrite(psvOut, 1, lGetRowSize(t), fp);
+            if(lGetFldNum(t) > 0)
+                _lExportContext(fp, psvOut, lGetFldNum(t), pGetTblKey(t), pszFlag);
+            else
+                fwrite(psvOut, 1, lGetRowSize(t), fp);
             fprintf(fp, "\n");
         }
     }
