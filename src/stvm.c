@@ -984,14 +984,16 @@ long    lDefineTable(char *pszCreate, char *pszTable)
 
     sfieldreplace(pszCreate, '\t', ' ');
 
-    if(NULL == (p = strcasestr(pszCreate, "create table")) && 
-        NULL == (p = strcasestr(pszCreate, "create queue")))
+    if(NULL == strcasestr(pszCreate, "create table") && 
+        NULL == strcasestr(pszCreate, "create queue"))
     {
         fprintf(stderr, "Lost table syntax\n");
         return RC_FAIL;
     }
 
-    if(NULL != strcasestr(pszCreate, "create queue"))
+    if(NULL != (p = strcasestr(pszCreate, "create table")))
+        bQueue = false; 
+    else if(NULL != (p = strcasestr(pszCreate, "create queue")))
         bQueue = true; 
 
     memset(&sf, 0, sizeof(TblDef));
