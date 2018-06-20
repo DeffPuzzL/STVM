@@ -1,0 +1,12 @@
+set TABLE=22
+set TABLESPACE=10000
+
+create queue QUEUE_USER_FIELD
+(
+    acct_id     long,
+    user_no     char(21),
+    user_type	char[2],
+    user_nm     char[81],
+    user_addr	char[161],
+    user_phone	char[31]
+);

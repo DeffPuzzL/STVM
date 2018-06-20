@@ -638,7 +638,7 @@ long    lIndexField(char *s, TblDef *ps, Uenum em)
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-long    lAnalysIndex(char *s, long len, TblDef *ps)
+long    lAnalysIndex(char *s, long len, TblDef *ps, bool bQueue)
 {
     long    i, n, k, lRet;
     char    szIndex[1024], szTemp[256], *p = NULL;
@@ -669,6 +669,12 @@ long    lAnalysIndex(char *s, long len, TblDef *ps)
 
         if(p = strcasestr(szTemp, "create unique index"))
         {
+            if(bQueue)
+            {
+                fprintf(stderr, "Queue does not support unique index\n");
+                return RC_FAIL;
+            }
+
             strimabout(p, "(", ")");
             if(k & UNQIUE)
             {
@@ -681,6 +687,12 @@ long    lAnalysIndex(char *s, long len, TblDef *ps)
         }
         else if(p = strcasestr(szTemp, "create index"))
         {
+            if(bQueue)
+            {
+                fprintf(stderr, "Queue does not support index\n");
+                return RC_FAIL;
+            }
+
             strimabout(p, "(", ")");
             if(k & NORMAL)
             {
@@ -693,6 +705,12 @@ long    lAnalysIndex(char *s, long len, TblDef *ps)
         }
         else if(p = strcasestr(szTemp, "create hash"))
         {
+            if(bQueue)
+            {
+                fprintf(stderr, "Queue does not support index\n");
+                return RC_FAIL;
+            }
+
             strimabout(p, "(", ")");
             if(k & NORMAL)
             {
@@ -959,17 +977,22 @@ void    vTableStruck(TABLE t)
  *************************************************************************************************/
 long    lDefineTable(char *pszCreate, char *pszTable)
 {
-    long    i;
     TblDef  sf;
+    bool    bQueue = false;
     char    *p = NULL, *q = NULL;
     SATvm   *pstSavm = (SATvm *)pGetSATvm();
 
     sfieldreplace(pszCreate, '\t', ' ');
-    if(NULL == (p = strcasestr(pszCreate, "create table")))
+
+    if(NULL == (p = strcasestr(pszCreate, "create table")) && 
+        NULL == (p = strcasestr(pszCreate, "create queue")))
     {
         fprintf(stderr, "Lost table syntax\n");
         return RC_FAIL;
     }
+
+    if(NULL != strcasestr(pszCreate, "create queue"))
+        bQueue = true; 
 
     memset(&sf, 0, sizeof(TblDef));
     if(RC_SUCC != lAnalysHead(pszCreate, p - pszCreate, &sf))
@@ -992,7 +1015,7 @@ long    lDefineTable(char *pszCreate, char *pszTable)
     sf.m_lReSize = sizecn(sf.m_stKey, sf.m_lIdxNum);
     sf.m_lTruck  = sf.m_lReSize + sizeof(SHTruck);
 
-    if(RC_SUCC != lAnalysIndex(q + 1, strlen(q + 1), &sf))
+    if(RC_SUCC != lAnalysIndex(q + 1, strlen(q + 1), &sf, bQueue))
         return RC_FAIL;
 
     if(RC_SUCC != lCustomTable(pstSavm, sf.m_table, sf.m_lMaxRow, &sf))

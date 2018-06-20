@@ -36,7 +36,7 @@ long    lSelectUserInfo()
         if(RC_SUCC != lSelect(pstSavm, (void *)&stUser)) 
         {
             fprintf(stderr, "Select error: (%d) (%s)\n", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
-           return RC_FAIL;
+            return RC_FAIL;
         }
     }
 
