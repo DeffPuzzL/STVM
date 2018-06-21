@@ -39,7 +39,7 @@ typedef long    (*FUNCEXEC)(SATvm *pstSavm, void *arg);
 #define MAX_CON_EVENTS                      65535
 #define TVM_PORT_LISTEN                     1801
 #define TVM_PORT_DOMAIN                     1800
-#define MAX_LOCK_TIME                       1800
+#define MAX_LOCK_TIME                       600
 #define TVM_LOCAL_SERV                      "LIS.tvm"
 #define TVM_REMOTE_DOM                      "RDS.tvm"
 #define LOCAL_HOST_IP                       "127.0.0.1"

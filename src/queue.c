@@ -332,8 +332,7 @@ long    lTimePop(SATvm *pstSavm, void *pvOut, Uenum eWait)
         return _lPopByRt(pstSavm, pvOut);
     }
 
-//    if(QUE_NORMAL == eWait)   tm.tv_sec = MAX_LOCK_TIME;
-    if(QUE_NORMAL == eWait)   tm.tv_sec = 5;
+    if(QUE_NORMAL == eWait)   tm.tv_sec = MAX_LOCK_TIME;
     lRet = _lPop(pstSavm, pstRun->m_pvAddr, pvOut, &tm);
     vTblDisconnect(pstSavm, pstSavm->tblName);
     return lRet;
