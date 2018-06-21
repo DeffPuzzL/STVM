@@ -43,6 +43,7 @@ extern long       _lQueryByRt(SATvm *pstSavm, size_t *plOut, void **ppsvOut);
 extern long       _lExtremeByRt(SATvm *pstSavm, void *psvOut);
 extern void       _vDropTableByRt(SATvm *pstSavm, TABLE t);
 extern long       _lRenameTableByRt(SATvm *pstSavm, TABLE to, TABLE tn);
+extern long       _lDeleteQueue(SATvm *pstSavm, void *pvAddr);
 
 /*************************************************************************************************
     macro
@@ -4311,15 +4312,19 @@ long    _lDeleteGroup(SATvm *pstSavm, void *pvAddr, TABLE t)
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-long    _lDeleteTruck(SATvm *pstSavm, void *pvAddr, TABLE t)
+long    _lDeleteTruck(SATvm *pstSavm, RunTime *pstRun, TABLE t)
 {
     bool    bIsIdx = false;
     SHTree  *pstRoot = NULL;
     SHTruck *pstTruck = NULL;
     char    szIdx[MAX_INDEX_LEN];
+    void    *pvAddr = pstRun->m_pvAddr;
     RWLock  *prwLock = (RWLock *)pGetRWLock(pvAddr);
     size_t  lData = 0, lOffset = lGetTblData(t), lIdx;
     long    lRow, lValid = ((TblDef *)pvAddr)->m_lValid;
+
+    if(TYPE_MQUEUE == pstRun->m_lType)
+        return _lDeleteQueue(pstSavm, pvAddr);
 
     if(HAVE_INDEX(t))    bIsIdx = true;
 
@@ -4476,13 +4481,6 @@ long    lDelete(SATvm *pstSavm)
     if(NULL == (pstRun = (RunTime *)pInitMemTable(pstSavm, pstSavm->tblName)))
         return RC_FAIL;
 
-    if(TYPE_MQUEUE == pstRun->m_lType)
-    {
-        pstSavm->m_lErrno = NOT_SUPPT_OPT;
-        vTblDisconnect(pstSavm, pstSavm->tblName);
-        return RC_FAIL;
-    }
-
     if(RES_REMOT_SID == pstRun->m_lLocal)
     {
         Tremohold(pstSavm, pstRun);
@@ -4498,7 +4496,7 @@ long    lDelete(SATvm *pstSavm)
 
     if(!pstSavm->pstVoid)
     {
-        lRet = _lDeleteTruck(pstSavm, pstRun->m_pvAddr, pstSavm->tblName);
+        lRet = _lDeleteTruck(pstSavm, pstRun, pstSavm->tblName);
         vTblDisconnect(pstSavm, pstSavm->tblName);
         return lRet;
     }
@@ -4532,7 +4530,7 @@ long    lDelete(SATvm *pstSavm)
         }
     }
 
-    lRet = _lDeleteTruck(pstSavm, pstRun->m_pvAddr, pstSavm->tblName);
+    lRet = _lDeleteTruck(pstSavm, pstRun, pstSavm->tblName);
     vTblDisconnect(pstSavm, pstSavm->tblName);
     return lRet;
 }
