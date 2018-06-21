@@ -304,6 +304,51 @@ retrys:
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
+long    lTimePop(SATvm *pstSavm, void *pvOut, Uenum eWait)
+{
+    long    lRet;
+    Timesp  tm = {0, 1};
+    RunTime *pstRun = NULL;
+
+    if(!pstSavm)
+    {
+        pstSavm->m_lErrno = CONDIT_IS_NIL;
+        return RC_FAIL;
+    }
+
+    if(NULL == (pstRun = (RunTime *)pInitMemTable(pstSavm, pstSavm->tblName)))
+        return RC_FAIL;
+
+    if(TYPE_MQUEUE != pstRun->m_lType)
+    {
+        pstSavm->m_lErrno = NOT_SUPPT_OPT;
+        vTblDisconnect(pstSavm, pstSavm->tblName);
+        return RC_FAIL;
+    }
+
+    if(RES_REMOT_SID == pstRun->m_lLocal)
+    {
+        Tremohold(pstSavm, pstRun);
+        return _lPopByRt(pstSavm, pvOut);
+    }
+
+//    if(QUE_NORMAL == eWait)   tm.tv_sec = MAX_LOCK_TIME;
+    if(QUE_NORMAL == eWait)   tm.tv_sec = 5;
+    lRet = _lPop(pstSavm, pstRun->m_pvAddr, pvOut, &tm);
+    vTblDisconnect(pstSavm, pstSavm->tblName);
+    return lRet;
+}
+
+
+/*************************************************************************************************
+    description：pop data from queue
+    parameters:
+        pstSavm                    --stvm handle
+        psvOut                     --out data
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
 long    lPop(SATvm *pstSavm, void *pvOut, Uenum eWait)
 {
     long    lRet;

@@ -33,14 +33,13 @@ Rowgrp *g_pstDomgrp = NULL, *g_pstTblgrp = NULL;
 extern char*   pGetLog();
 extern long    lGetBootType();
 extern void    vSetBootType(long lType);
+extern long    lTimePop(SATvm *pstSavm, void *pvOut, Uenum eWait);
 void*   pParsePacket(SATvm *pstSavm, void *pstVoid, TFace *pstFace, void *pvBuffer, long lLen);
 void*   pProtocaJava(SATvm *pstSavm, void *pstVoid, TFace *pstFace, void *pvBuffer, long lLen);
 
 /*************************************************************************************************
     macro
  *************************************************************************************************/
-#define Tlog(...)           vTraceLog(__FILE__, __LINE__, __VA_ARGS__)
-
 #define checkrequest(s,c,f) if(MAX(f->m_lRows, f->m_lDLen) > c->m_lBuffer)   \
                             { \
                                if(MAX(f->m_lRows, f->m_lDLen) > DATA_MAX_LEN) \
@@ -1448,7 +1447,7 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
         TFree(pvOut);
         return RC_SUCC;
     case  OPERATE_QUEPOP:
-        if(RC_SUCC != lPop(pstSavm, (void *)pvData, pstFace->m_lFind))
+        if(RC_SUCC != lTimePop(pstSavm, (void *)pvData, pstFace->m_lFind))
         {
             pstFace->m_lErrno = pstSavm->m_lErrno;
             lData = sizeof(TFace);
@@ -1852,6 +1851,7 @@ long    lPollRequest(SATvm *pstSovm, SKCon *pstCon, TFace *pstFace, void *pstVoi
     }
     else
     {
+        pstSovm->stRunTime[pstFace->m_table].m_lType  = pstRun->m_lType;
         pstSovm->stRunTime[pstFace->m_table].m_bAttch = pstRun->m_bAttch;
         pstSovm->stRunTime[pstFace->m_table].m_pvAddr = pstRun->m_pvAddr;
     }

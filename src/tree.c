@@ -9237,7 +9237,12 @@ long    lImportFile(TABLE t, char *pszFile, char *pszFlag)
 
         memset(pvData, 0, lGetRowSize(t));
         if(TYPE_MQUEUE == pstRun->m_lType)
-            memcpy(pvData, szLine, lGetRowSize(t));
+        {
+            if(lGetFldNum(t) > 0)
+                _lImportContext(szLine, lGetFldNum(t), pGetTblKey(t), pvData, pszFlag);
+            else
+                memcpy(pvData, szLine, lGetRowSize(t));
+        }
         else
             _lImportContext(szLine, lGetFldNum(t), pGetTblKey(t), pvData, pszFlag);
         if(RC_SUCC != __lInsert(pstSavm, pstRun, pstSavm->tblName, 0))
