@@ -1091,7 +1091,7 @@ long    lCreateByFile(char *pszFile)
         return RC_FAIL;
     }
 
-    if(NULL == (pszCreate = (char *)calloc(stBuf.st_size, 1)))
+    if(NULL == (pszCreate = (char *)calloc(stBuf.st_size + 1, 1)))
     {
         fprintf(stderr, "create memory error, %s\n", strerror(errno));
         return RC_FAIL;
