@@ -39,10 +39,10 @@ typedef long    (*FUNCEXEC)(SATvm *pstSavm, void *arg);
 #define MAX_CON_EVENTS                      65535
 #define TVM_PORT_LISTEN                     1801
 #define TVM_PORT_DOMAIN                     1800
+#define MAX_LOCK_TIME                       600
 #define TVM_LOCAL_SERV                      "LIS.tvm"
 #define TVM_REMOTE_DOM                      "RDS.tvm"
 #define LOCAL_HOST_IP                       "127.0.0.1"
-
 
 /*************************************************************************************************
     表结构&索引定义区
@@ -77,6 +77,7 @@ typedef struct  __TVM_INTERFACE
 /*************************************************************************************************
     macro
  *************************************************************************************************/
+#define Tlog(...)           vTraceLog(__FILE__, __LINE__, __VA_ARGS__)
 
 /*************************************************************************************************
     function
@@ -84,6 +85,7 @@ typedef struct  __TVM_INTERFACE
 #ifdef __cplusplus
 extern "C" {
 #endif
+extern void       vTraceLog(const char *pszFile, int nLine, const char *fmt, ...);
 
 extern void       lInitTitle(int argc, char **argv, char **envp);
 extern void       vSetTitile(const char *name);

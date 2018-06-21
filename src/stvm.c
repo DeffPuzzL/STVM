@@ -1091,7 +1091,7 @@ long    lCreateByFile(char *pszFile)
         return RC_FAIL;
     }
 
-    if(NULL == (pszCreate = (char *)calloc(stBuf.st_size, 1)))
+    if(NULL == (pszCreate = (char *)calloc(stBuf.st_size + 1, 1)))
     {
         fprintf(stderr, "create memory error, %s\n", strerror(errno));
         return RC_FAIL;
@@ -4387,7 +4387,8 @@ void    vInitialCustom()
    //select nextval from SEQUENCE@SEQ_TEST
     snprintf(g_stCustom.m_pszWord, ALLOC_CMD_LEN, "SET,FROM,WHERE,COUNT(1),MAX,MIN,NEXTVAL,"
         "ORDER BY,GROUP BY,SEQUENCE@,SYS_TVM_FIELD,SYS_TVM_DOMAIN,SYS_TVM_SEQUE,TABLE,INTO,"
-        "ON,INFO,INDEX,VALUES,DEBUG [ON|OFF],SHOWMODE [ROW|COLUMN],SHOWSIZE [NUM],CLICK,TO,");
+        "ON,INFO,INDEX,VALUES,DEBUG [ON|OFF],SHOWMODE [ROW|COLUMN],SHOWSIZE [NUM],CLICK,TO,"
+        "DELIMITER,");
     g_stCustom.m_lWord = lgetstrnum(g_stCustom.m_pszWord, ",");
  
     rl_attempted_completion_function = pMatchCompletion;

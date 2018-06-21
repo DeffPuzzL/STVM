@@ -29,6 +29,47 @@ extern long       _lPopByRt(SATvm *pstSavm, void *psvOut);
 extern long       _lPopupByRt(SATvm *pstSavm, size_t lExp, time_t lTime, size_t *plOut, void **pp);
 
 /*************************************************************************************************
+    description：Delete the queue that matches conditions
+    parameters:
+        pstSavm                    --stvm handle
+        pvAddr                     --memory address
+        t                          --table
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    _lDeleteQueue(SATvm *pstSavm, void *pvAddr)
+{
+    SHTruck *pstTruck = NULL;
+    TblDef  *pv = (TblDef *)pvAddr;
+    size_t  lRow, lOffset = pv->m_lListOfs;
+
+    for(pstSavm->m_lEffect = 0, lRow = 0; lRow < pv->m_lMaxRow; lOffset ++, lRow ++)
+    {
+        if(0 >= pv->m_lValid)
+            break;
+
+        pstTruck = (PSHTruck)pGetNode(pvAddr, pv->m_lData + pv->m_lTruck * (lOffset % pv->m_lMaxRow));
+        if(IS_TRUCK_NULL(pstTruck))
+            continue;
+
+        if(RC_MISMA == lFeildMatch(&pstSavm->stCond, pstTruck->m_pvData, pstSavm->pstVoid))
+            continue;
+
+        pstSavm->m_lEffect ++;
+        if(0 > (int)__sync_sub_and_fetch(&pv->m_lValid, 1))
+        {   
+            __sync_fetch_and_add(&pv->m_lValid, 1);
+            break;
+        }
+
+        SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NULL);
+    }
+
+    return RC_SUCC;
+}
+
+/*************************************************************************************************
     description：push data to queue
     parameters:
         pstSavm                    --stvm handle
@@ -294,6 +335,50 @@ retrys:
 
     return RC_SUCC;
 }
+
+/*************************************************************************************************
+    description：pop data from queue
+    parameters:
+        pstSavm                    --stvm handle
+        psvOut                     --out data
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    lTimePop(SATvm *pstSavm, void *pvOut, Uenum eWait)
+{
+    long    lRet;
+    Timesp  tm = {0, 1};
+    RunTime *pstRun = NULL;
+
+    if(!pstSavm)
+    {
+        pstSavm->m_lErrno = CONDIT_IS_NIL;
+        return RC_FAIL;
+    }
+
+    if(NULL == (pstRun = (RunTime *)pInitMemTable(pstSavm, pstSavm->tblName)))
+        return RC_FAIL;
+
+    if(TYPE_MQUEUE != pstRun->m_lType)
+    {
+        pstSavm->m_lErrno = NOT_SUPPT_OPT;
+        vTblDisconnect(pstSavm, pstSavm->tblName);
+        return RC_FAIL;
+    }
+
+    if(RES_REMOT_SID == pstRun->m_lLocal)
+    {
+        Tremohold(pstSavm, pstRun);
+        return _lPopByRt(pstSavm, pvOut);
+    }
+
+    if(QUE_NORMAL == eWait)   tm.tv_sec = MAX_LOCK_TIME;
+    lRet = _lPop(pstSavm, pstRun->m_pvAddr, pvOut, &tm);
+    vTblDisconnect(pstSavm, pstSavm->tblName);
+    return lRet;
+}
+
 
 /*************************************************************************************************
     description：pop data from queue
