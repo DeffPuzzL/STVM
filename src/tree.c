@@ -11116,6 +11116,7 @@ long    lDumpTable(SATvm *pstSavm, TABLE t)
         return RC_FAIL;
     }
     fwrite(pGetTblDef(t), sizeof(TblDef), 1, fp);
+    fwrite(&pstRun->m_lType, sizeof(pstRun->m_lType), 1, fp);
 
     pstSavm->lSize = lGetRowSize(t);
     if(TYPE_MQUEUE == pstRun->m_lType)
@@ -11142,12 +11143,13 @@ long    lDumpTable(SATvm *pstSavm, TABLE t)
 long    lMountTable(SATvm *pstSavm, char *pszFile)
 {
     TblDef  sf;
+    uint    lType;
     FILE    *fp = NULL;
+    ulong   uTimes = 0;
     long    lEffect = 0;
     void    *pvData = NULL;
     RunTime *pstRun = NULL;
     RWLock  *prwLock = NULL;
-    ulong   uTimes = 0, lRet;
 
     if(!pszFile || !pstSavm || !strlen(pszFile))
     {
@@ -11162,12 +11164,31 @@ long    lMountTable(SATvm *pstSavm, char *pszFile)
     }
 
     fread(&sf, sizeof(TblDef), 1, fp);
+    fread(&lType, sizeof(lType), 1, fp);
     if(RC_SUCC != lInitSATvm(pstSavm, sf.m_table))
-        goto MOUNT_ERROR;
+    {
+        if(pstSavm->m_lErrno != TBL_NOT_FOUND)
+            goto MOUNT_ERROR;
 
+        sf.m_lGroup    = 0;
+        sf.m_lValid    = 0;
+        sf.m_lTreePos  = 0;
+        sf.m_lTreeRoot = 0;
+        sf.m_lGroupPos = 0;
+        sf.m_lGroupRoot= 0;
+        sf.m_lListPos  = 0;
+        sf.m_lListOfs  = 0;
+        memcpy((void *)pGetTblDef(sf.m_table), (void *)&sf, sizeof(TblDef));
+        if(RC_SUCC != _lCustomTable(pstSavm, sf.m_table, sf.m_lMaxRow, false, lType))
+            goto MOUNT_ERROR;
+    }
+ 
     if(NULL == (pstRun = (RunTime *)pInitHitTest(pstSavm, sf.m_table)))
         goto MOUNT_ERROR;
 
+    pstRun->m_lType    = lType;
+    pstRun->m_lRowSize = sf.m_lReSize;
+    pstRun->m_lLocal   = RES_LOCAL_SID;
     if(sf.m_lReSize != lGetRowSize(sf.m_table))
     {
         vTblDisconnect(pstSavm, pstSavm->tblName);
@@ -11183,6 +11204,7 @@ long    lMountTable(SATvm *pstSavm, char *pszFile)
     }
 
     pstSavm->pstVoid = pvData;
+    pstSavm->tblName = sf.m_table;
     pstSavm->lSize   = sf.m_lReSize;
     prwLock = (RWLock *)pGetRWLock(pstRun->m_pvAddr);
     if(RC_SUCC != pthread_rwlock_wrlock(prwLock))
