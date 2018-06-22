@@ -34,7 +34,7 @@ typedef long                 CREATE;
 //#pragma pack(4)
 
 #define TVM_VKERNEL                        "1.2.0.0"
-#define TVM_VERSION                        "1.2.4.0"
+#define TVM_VERSION                        "1.2.5.0"
 /*************************************************************************************************
    custom macro
  *************************************************************************************************/
@@ -608,6 +608,15 @@ typedef struct  __SYS_TVM_SEQUE
     char    m_szSQName[MAX_INDEX_LEN];         // Name of sequence
     uint    m_uIncrement;
 }TSeque;
+
+typedef struct  __SYS_TVM_RESLOCK
+{
+    char    m_szResName[MAX_INDEX_LEN];         // Name of sequence
+    long    m_lResource;
+    char    m_szHost[20];
+    long    m_lPid;
+    bool    m_bLock;
+}TReslock;
 
 /*************************************************************************************************
     Operating handle
