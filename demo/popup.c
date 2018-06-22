@@ -29,7 +29,7 @@ int   main(int argc, char *argv[])
 
     lTime = time(NULL);
     queuenull(pstSavm, sizeof(dbUser), QUEUE_USER_INFO);
-    if(RC_SUCC != lPopup(pstSavm, 3, 5, &lRows, (void **)&pstUser)) 
+    if(RC_SUCC != lPopup(pstSavm, 3, 0, &lRows, (void **)&pstUser)) 
     {
         fprintf(stderr, "Pop error:(%u)(%s), time:%ld, effect:%d\n", pstSavm->m_lErrno, 
             sGetTError(pstSavm->m_lErrno), time(NULL) - lTime, pstSavm->m_lEffect);

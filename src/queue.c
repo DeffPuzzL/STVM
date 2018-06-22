@@ -198,7 +198,7 @@ retry:
         true                   --success
         false                  --time out
  *************************************************************************************************/
-bool    bIsTimeOut(Timesp *tm, Timesp *tb)
+bool    bTimeOut(Timesp *tm, Timesp *tb)
 {
     Timesp  tms;
 
@@ -248,13 +248,13 @@ bool    bIsTimeOut(Timesp *tm, Timesp *tb)
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, Timesp *tm, size_t *plOut, 
+long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, time_t lTime, size_t *plOut, 
             void **ppsvOut)
 {
-    Timesp  tms;
-    int     nPos, i = 0;
-    SHTruck *ps = NULL;
     extern  int errno;
+    SHTruck *ps = NULL;
+    int     nPos, i = 0;
+    Timesp  tms, tm = {0};
     TblDef  *pv = (TblDef *)pvAddr;
 
     if(NULL == (*ppsvOut = (char *)malloc(lExpect * pv->m_lReSize)))
@@ -262,10 +262,10 @@ long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, Timesp *tm, size_t 
         pstSavm->m_lErrno = MALLC_MEM_ERR;
         return RC_FAIL;
     }
-
-    for (*plOut = 0, clock_gettime(CLOCK_REALTIME, &tms); *plOut < lExpect; )
+      
+    for (tm.tv_sec = lTime, *plOut = 0, clock_gettime(CLOCK_REALTIME, &tms); *plOut < lExpect; )
     {
-        if(!bIsTimeOut(tm, &tms)) 
+        if(lTime > 0 && !bTimeOut(&tm, &tms))
         {
             pstSavm->m_lEffect = *plOut;
             if(0 == pstSavm->m_lEffect)
@@ -278,7 +278,7 @@ long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, Timesp *tm, size_t 
             return RC_FAIL;
         }
 
-        if(0 != Futex(&pv->m_lValid, FUTEX_WAIT, 0, tm))
+        if(0 != Futex(&pv->m_lValid, FUTEX_WAIT, 0, &tm))
         {
             if(ETIMEDOUT == errno)
             {
@@ -301,16 +301,48 @@ long    _lPops(SATvm *pstSavm, void *pvAddr, size_t lExpect, Timesp *tm, size_t 
                 ;
         }
 
-        if(0 == pv->m_lValid)
-            continue;
+        if(lTime == 0)
+        {
+            if(0 == pv->m_lValid)
+            {
+                pstSavm->m_lEffect = *plOut;
+                if(0 == pstSavm->m_lEffect)
+                {
+                    TFree(*ppsvOut);
+                    pstSavm->m_lErrno = NO_DATA_FOUND;
+                    return RC_FAIL;
+                }
 
-        if(0 > (int)__sync_sub_and_fetch(&pv->m_lValid, 1))
-        {   
-            __sync_fetch_and_add(&pv->m_lValid, 1);
-            continue;
+                return RC_SUCC;
+            }
+        
+            if(0 > (int)__sync_sub_and_fetch(&pv->m_lValid, 1))
+            {   
+                __sync_fetch_and_add(&pv->m_lValid, 1);
+
+                pstSavm->m_lEffect = *plOut;
+                if(0 == pstSavm->m_lEffect)
+                {
+                    TFree(*ppsvOut);
+                    pstSavm->m_lErrno = NO_DATA_FOUND;
+                    return RC_FAIL;
+                }
+
+                return RC_SUCC;
+            }
         }
-    
-retrys:
+        else
+        {
+            if(0 == pv->m_lValid)
+                continue;
+
+            if(0 > (int)__sync_sub_and_fetch(&pv->m_lValid, 1))
+            {   
+                __sync_fetch_and_add(&pv->m_lValid, 1);
+                continue;
+            }
+        }
+retrys: 
         /* at least cost one vaild */
         if(pv->m_lMaxRow > (nPos = __sync_add_and_fetch(&pv->m_lListOfs, 1)))
             ;
@@ -342,7 +374,7 @@ retrys:
 }
 
 /*************************************************************************************************
-    description：pop data from queue
+    description：pop data from queue use tvmpop
     parameters:
         pstSavm                    --stvm handle
         psvOut                     --out data
@@ -398,7 +430,7 @@ long    lPop(SATvm *pstSavm, void *pvOut, Uenum eWait)
 {
     long    lRet;
     RunTime *pstRun = NULL;
-    static  Timesp  tm = {0, 1};
+    static  Timesp  tm = {0, 0};
 
     if(!pstSavm)
     {
@@ -445,7 +477,6 @@ long    lPop(SATvm *pstSavm, void *pvOut, Uenum eWait)
 long    lPopup(SATvm *pstSavm, size_t lExpect, time_t lTime, size_t *plOut, void **ppsvOut)
 {
     long    lRet;
-    Timesp  tm = {0};
     RunTime *pstRun = NULL;
 
     if(!pstSavm)
@@ -470,8 +501,7 @@ long    lPopup(SATvm *pstSavm, size_t lExpect, time_t lTime, size_t *plOut, void
         return _lPopupByRt(pstSavm, lExpect, lTime, plOut, ppsvOut);
     }
 
-    tm.tv_sec = lTime;
-    lRet = _lPops(pstSavm, pstRun->m_pvAddr, lExpect, &tm, plOut, ppsvOut);
+    lRet = _lPops(pstSavm, pstRun->m_pvAddr, lExpect, lTime, plOut, ppsvOut);
     vTblDisconnect(pstSavm, pstSavm->tblName);
     return lRet;
 }
