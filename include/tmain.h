@@ -23,7 +23,6 @@
 #define _HHH_TVM_DOMAIN_HHH__
 #include "tvm.h"
 
-
 typedef struct  epoll_event     epollevt;
 typedef long    (*FUNCEXEC)(SATvm *pstSavm, void *arg);
 

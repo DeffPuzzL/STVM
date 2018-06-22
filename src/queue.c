@@ -57,13 +57,18 @@ long    _lDeleteQueue(SATvm *pstSavm, void *pvAddr)
             continue;
 
         pstSavm->m_lEffect ++;
+        SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NULL);
         if(0 > (int)__sync_sub_and_fetch(&pv->m_lValid, 1))
         {   
             __sync_fetch_and_add(&pv->m_lValid, 1);
             break;
         }
+    }
 
-        SET_DATA_TRUCK(pstTruck, DATA_TRUCK_NULL);
+    if(0 == pstSavm->m_lEffect)
+    {
+        pstSavm->m_lErrno = NO_DATA_FOUND;
+        return RC_FAIL;
     }
 
     return RC_SUCC;
