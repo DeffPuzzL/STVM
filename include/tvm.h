@@ -328,9 +328,9 @@ typedef long                 CREATE;
 #define IDX_FIELD(t, f, a)      if(RC_SUCC != lAddIdxField(tbl, type, FPOS(t, f), FLEN(t, f), a, #f)) \
                                     return RC_FAIL;
 #define FIELD(t, f, a)          if(RC_SUCC != lSetTableIdx(tbl, FPOS(t, f), FLEN(t, f), #f, a, CHK_SELECT)) \
-                                       return RC_FAIL;
+                                    return RC_FAIL;
 #define FIELU(t, f, a)          if(RC_SUCC != lSetTableIdx(tbl, FPOS(t, f), FLEN(t, f), #f, a, IDX_SELECT)) \
-                                       return RC_FAIL;
+                                    return RC_FAIL;
 #define FIELR(t, f, a)          if(RC_SUCC != lSetTableIdx(tbl, FPOS(t, f), FLEN(t, f), #f, a, RCD_SELECT)) \
                                     return RC_FAIL;
 #define FINISH                  return RC_SUCC;
@@ -339,6 +339,15 @@ typedef long                 CREATE;
 /*************************************************************************************************
     Field assignment
  *************************************************************************************************/
+#define conditvoid(p,v,l,t)     do{ \
+                                   p->stCond.uFldcmp = 0; \
+                                   p->stUpdt.uFldcmp = 0; \
+                                   p->lFind = 0;  \
+                                   p->tblName = t; \
+                                   p->lSize = l; \
+                                   p->pstVoid = (void *)&(v);  \
+                                }while(0);
+
 #define conditbind(p,v,t)       do{ \
                                    p->stCond.uFldcmp = 0; \
                                    p->stUpdt.uFldcmp = 0; \
@@ -365,6 +374,12 @@ typedef long                 CREATE;
                                    p->lSize = l; \
                                    p->tblName = t; \
                                    p->pstVoid = NULL;  \
+                                }while(0);
+
+#define queuevoid(p,v,l,t)     do{ \
+                                   p->lSize = l; \
+                                   p->tblName = t; \
+                                   p->pstVoid = (void *)&v;  \
                                 }while(0);
 
 #define queueinit(p,v,t)       do{ \
