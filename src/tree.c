@@ -11084,10 +11084,9 @@ void    _vDumpQueue(SATvm *pstSavm, void *pvAddr, FILE *fp)
         RC_SUCC                    --success
         RC_FAIL                    --failure
  *************************************************************************************************/
-long    lDumpTable(SATvm *pstSavm, TABLE t)
+long    _lDumpTable(SATvm *pstSavm, TABLE t, char *pszFile)
 {
     FILE    *fp = NULL;
-    char    szFile[512];
     RunTime *pstRun = NULL;
 
     if(!pstSavm)
@@ -11096,7 +11095,6 @@ long    lDumpTable(SATvm *pstSavm, TABLE t)
         return RC_FAIL;
     }
 
-    memset(szFile, 0, sizeof(szFile));
     if(RC_SUCC != lInitSATvm(pstSavm, t))
         return RC_FAIL;
 
@@ -11109,8 +11107,7 @@ long    lDumpTable(SATvm *pstSavm, TABLE t)
         return RC_FAIL;
     }
 
-    snprintf(szFile, sizeof(szFile), "%s/%d.sdb", getenv("TVMDBD"), t);
-    if(NULL == (fp = fopen(szFile, "wb")))
+    if(NULL == (fp = fopen(pszFile, "wb")))
     { 
         pstSavm->m_lErrno = FILE_NOT_RSET;
         return RC_FAIL;
@@ -11129,6 +11126,24 @@ long    lDumpTable(SATvm *pstSavm, TABLE t)
     fprintf(stdout, "导出表:%s 有效记录:%ld, completed successfully !!\n", sGetTableName(t), 
         pstSavm->m_lEffect);
     return RC_SUCC;
+}
+
+/*************************************************************************************************
+    description：Dump table
+    parameters:
+        pstSavm                    --stvm handle
+        t                          --table
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    lDumpTable(SATvm *pstSavm, TABLE t)
+{
+    char    szFile[512];
+
+    memset(szFile, 0, sizeof(szFile));
+    snprintf(szFile, sizeof(szFile), "%s/%d.sdb", getenv("TVMDBD"), t);
+    return _lDumpTable(pstSavm, t, szFile);
 }
 
 /*************************************************************************************************

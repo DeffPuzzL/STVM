@@ -62,6 +62,8 @@
 #include <dlfcn.h>
 #include <stdbool.h>
 #include <libgen.h>
+#define _GNU_SOURCE
+#include <dirent.h>
 
 typedef short       int     sint;
 typedef unsigned    int     uint;

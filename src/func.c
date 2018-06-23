@@ -19,12 +19,14 @@
 *  POSSIBILITY OF SUCH DAMAGE.
 */
 
+#define _GNU_SOURCE
 #include    "tvm.h"
 
 /************************************************************************************************
    function
  ************************************************************************************************/
 extern void    vCondInsInit(FdCond *pstCond, TABLE t);
+extern long    _lDumpTable(SATvm *pstSavm, TABLE t, char *pszFile);
 
 /*************************************************************************************************
     description：dump the unused
@@ -100,6 +102,96 @@ long    lUnuseDump(SATvm *pstSavm, TABLE t)
     return RC_SUCC;
 }
 
+/*************************************************************************************************
+    description：exit and backup tables
+    parameters:
+        pstSavm                    --stvm handle
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    lBackupTables(SATvm *pstSavm)
+{
+    size_t  lOut = 0, i;
+    char    szFile[512];
+    TIndex  *pstIndex = NULL;
+
+    memset(szFile, 0, sizeof(szFile));
+    if(RC_SUCC != lExportTable(SYS_TVM_INDEX, &lOut, (void *)&pstIndex))
+        return RC_FAIL;
+
+    snprintf(szFile, sizeof(szFile), "%s/backup", getenv("TVMDBD"));
+    if(0 != mkdir(szFile, S_IRWXU | S_IRGRP))
+    {
+        if(EEXIST != errno)
+        {
+            vRedeError(pstSavm->m_lErrno = 127, strerror(errno));
+            return RC_FAIL;
+        }
+    }
+
+    for(i = 0; i < lOut; i ++)
+    {
+        if((TYPE_SYSTEM == pstIndex[i].m_lType || TYPE_INCORE == pstIndex[i].m_lType) &&
+            SYS_TVM_SEQUE != pstIndex[i].m_table)
+            continue;
+
+        memset(szFile, 0, sizeof(szFile));
+        snprintf(szFile, sizeof(szFile), "%s/backup/%d.sdb", getenv("TVMDBD"), 
+            pstIndex[i].m_table);
+        _lDumpTable(pstSavm, pstIndex[i].m_table, szFile);
+    }
+
+    TFree(pstIndex);
+
+    return RC_SUCC;
+}
+
+/*************************************************************************************************
+    description：boot and restore tables
+    parameters:
+        pstSavm                    --stvm handle
+    return:
+        RC_SUCC                    --success
+        RC_FAIL                    --failure
+ *************************************************************************************************/
+long    lRestoreTables(SATvm *pstSavm)
+{
+    DIR    *dir;
+    struct dirent *pr;
+    char    szPath[512], szFile[128];
+
+    memset(szPath, 0, sizeof(szPath));
+    memset(szFile, 0, sizeof(szFile));
+    snprintf(szPath, sizeof(szPath), "%s/backup", getenv("TVMDBD"));
+    if ((NULL == (dir = opendir(szPath))))
+    {
+        vRedeError(pstSavm->m_lErrno = 127, strerror(errno));
+        return RC_FAIL;
+    }
+
+    while(pr = readdir(dir))
+    {
+        if (NULL == strcasestr(pr->d_name, ".sdb"))
+            continue;
+
+        if(DT_REG != pr->d_type) 
+            continue;
+
+        memset(szFile, 0, sizeof(szFile));
+        snprintf(szFile, sizeof(szFile), "%s/%s", szPath, pr->d_name);
+        if(RC_SUCC != lMountTable(pstSavm, szFile))
+        {
+            fprintf(stderr, "Warning:restore table failed, %s", 
+                sGetTError(pstSavm->m_lErrno));
+            continue;
+        }
+    }
+
+    closedir(dir);
+
+    return RC_SUCC;
+}
 
 /****************************************************************************************
     code end

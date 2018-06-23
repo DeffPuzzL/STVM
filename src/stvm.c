@@ -38,6 +38,8 @@ extern char     **environ;
 extern long     lShutdownTvm();
 extern void     vSetNode(char *s);
 extern long     lStartupTvm(TBoot *pstBoot);
+extern long     lBackupTables(SATvm *pstSavm);
+extern long     lRestoreTables(SATvm *pstSavm);
 extern long     lMountTable(SATvm *pstSavm, char *pszFile);
 extern long     lUnuseDump(SATvm *pstSavm, TABLE t);
 
@@ -4019,7 +4021,8 @@ long    lExecuteTvm(SATvm *pstSavm, char *pszSQL)
  **************************************************************************************************/
 long    lStartSystem(TBoot *pstBoot, char *pszMode)
 {
-    Benum   eMode = 0;
+    long    i, n;
+    Benum   eMode = 0, eRestore = 0;
     SATvm   *pstSavm = (SATvm *)pGetSATvm();
 
     if(0 != access(getenv("TVMCFG"), R_OK))
@@ -4029,26 +4032,50 @@ long    lStartSystem(TBoot *pstBoot, char *pszMode)
             return RC_FAIL;
     }
 
-    if(pszMode && !strcmp(pszMode, "o"))    //    offline
+    for(i = 0, n = NULL == pszMode ? 0 : strlen(pszMode); i < n; i ++)
     {
-        fprintf(stdout, "Warning:TVM will start offline\n");
-        fflush(stdout);
-        eMode = 1;
+        switch(pszMode[i])
+        {
+        case    'o':   // offline
+            fprintf(stdout, "Warning:STVM will start offline ...\n");
+            eMode = 1;
+            break;
+        case    'r':
+            fprintf(stdout, "STVM will do not restore tables ...\n");
+            eRestore = 1;
+            break;
+        default:
+            break;
+        }
     }
-
+    
     if(!bIsTvmBoot())
     {
-       if(RC_SUCC != lStartupTvm(pstBoot))
-       {
-           fprintf(stderr, "failed to boot TVM, %s\n", sGetTError(pstSavm->m_lErrno));
-           return RC_FAIL;
-       }
-    }
+        if(RC_SUCC != lStartupTvm(pstBoot))
+        {
+            fprintf(stderr, "failed to boot TVM, %s\n", sGetTError(pstSavm->m_lErrno));
+            return RC_FAIL;
+        }
 
-    if(RC_SUCC != lBootLocal(pstSavm, pstBoot, eMode))
+        if(RC_SUCC != lBootLocal(pstSavm, pstBoot, eMode))
+        {
+            fprintf(stderr, "failed to boot LIS, %s\n", sGetTError(pstSavm->m_lErrno));
+            return RC_SUCC;
+        }
+
+        if(0 == eRestore && lRestoreTables(pstSavm))
+        {
+            fprintf(stderr, "restore tables failed, %s\n", sGetTError(pstSavm->m_lErrno));
+            return RC_FAIL;
+        }
+    }
+    else
     {
-        fprintf(stderr, "failed to boot LIS, %s\n", sGetTError(pstSavm->m_lErrno));
-        return RC_SUCC;
+        if(RC_SUCC != lBootLocal(pstSavm, pstBoot, eMode))
+        {
+            fprintf(stderr, "failed to boot LIS, %s\n", sGetTError(pstSavm->m_lErrno));
+            return RC_SUCC;
+        }
     }
 
     fprintf(stderr, "start TVM : (%s)\n", sGetTError(pstSavm->m_lErrno));
@@ -4104,6 +4131,12 @@ long    lStopSystem(TBoot *pstBoot, char *pszApp)
     pclose(fp);
 
     if(!bIsTvmBoot()) return RC_SUCC;
+
+    if(RC_SUCC != lBackupTables(pstSavm))
+    {
+        fprintf(stderr, "backup tables failed, %s\n", sGetTError(pstSavm->m_lErrno));
+        return RC_FAIL;
+    }
 
     if(RC_SUCC != lShutdownTvm())
     {
