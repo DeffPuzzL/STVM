@@ -2988,7 +2988,7 @@ long    _lSelectSyntax(SATvm *pstSavm, char *pszSQL, char *pszFile, char *pszDem
             return RC_FAIL;
         }
 
-        if((p = strcasestr(szWhere, "group")) || (p = strcasestr(szWhere, "order")))
+        if((p = strcasestr(szWhere, " group ")) || (p = strcasestr(szWhere, " order ")))
         {
             strcpy(szAdorn, p);
             memset(p, 0, sizeof(szWhere) - (p - szWhere));
@@ -3008,7 +3008,7 @@ long    _lSelectSyntax(SATvm *pstSavm, char *pszSQL, char *pszFile, char *pszDem
         }
             
         sltrim(szTable);
-        if((p = strcasestr(szTable, "group")) || (p = strcasestr(szTable, "order")))
+        if((p = strcasestr(szTable, " group ")) || (p = strcasestr(szTable, " order ")))
         {
             strcpy(szAdorn, p);
             memset(p, 0, sizeof(szTable) - (p - szTable));
