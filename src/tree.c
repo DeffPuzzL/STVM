@@ -569,6 +569,7 @@ long    lAttchTable(SATvm *pstSovm, TABLE t)
        return RC_FAIL;
 
     memcpy((RunTime *)pGetRunTime(pstSovm, t), pstRun, sizeof(RunTime));
+    vSetQueueAttch(pstRun, 1);
     return RC_SUCC;
 }
 
