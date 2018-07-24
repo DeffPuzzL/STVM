@@ -166,6 +166,12 @@ long    lRestoreTables(SATvm *pstSavm)
     snprintf(szPath, sizeof(szPath), "%s/backup", getenv("TVMDBD"));
     if ((NULL == (dir = opendir(szPath))))
     {
+        if(ENOENT == errno)
+        {
+            mkdir(szPath, S_IRWXU | S_IRGRP);
+            return RC_SUCC;
+        }
+
         vRedeError(pstSavm->m_lErrno = 127, strerror(errno));
         return RC_FAIL;
     }

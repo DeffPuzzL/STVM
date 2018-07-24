@@ -29,8 +29,9 @@ POPUP=popup
 PRESSURE=press_demo
 TVMPUSH=tvmpush
 ASYPUSH=asypush
+THREAD=thread_demo
 
-all: $(CREATE) $(INSERT) $(QUEUE) $(PUSH) $(POP) $(SELECT) $(QUERY) $(DELETE) $(UPDATE) $(COUNT) $(GROUP) $(EXTREME) $(TRUNCATE) $(DROP) $(PRESSURE) $(CLICK) $(POPUP) $(REPLACE) $(TVMPUSH) $(ASYPUSH) $(TVMPOP) $(TVMREPLACE) clean
+all: $(CREATE) $(INSERT) $(QUEUE) $(PUSH) $(POP) $(SELECT) $(QUERY) $(DELETE) $(UPDATE) $(COUNT) $(GROUP) $(EXTREME) $(TRUNCATE) $(DROP) $(PRESSURE) $(CLICK) $(POPUP) $(REPLACE) $(TVMPUSH) $(ASYPUSH) $(TVMPOP) $(TVMREPLACE) $(THREAD) clean
 $(CREATE): create_table.o
 	$(CC) -o $@ $< $(LIBDIR)
 $(TVMREPLACE): tvmreplace.o
@@ -74,6 +75,8 @@ $(QUEUE): create_queue.o
 $(POPUP): popup.o
 	$(CC) -o $@ $< $(LIBDIR)
 $(PRESSURE): press_demo.o
+	$(CC) -o $@ $< $(LIBDIR)
+$(THREAD): thread_demo.o
 	$(CC) -o $@ $< $(LIBDIR)
 
 .SUFFIXES: .c .o
