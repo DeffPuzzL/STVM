@@ -1,5 +1,5 @@
 set TABLE=20
-set TABLESPACE=10000
+set TABLESPACE=50000
 
 create table TBL_USER_INFO
 (
