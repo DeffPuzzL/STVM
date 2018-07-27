@@ -154,11 +154,11 @@ void    vTraceLog(const char *pszFile, int nLine, const char *fmt, ...)
     ptm = localtime(&tb.time);
 
 #ifdef DEBUG
-    fprintf(fp, "F=%-8s L=%-5d P=%-7d T=%-7ld T=%04d%02d%02d %02d%02d%02d:%03d  %s\n",
+    fprintf(fp, "F=%-8s L=%-5d P=%-7d T=%-7ld D=%04d%02d%02d %02d%02d%02d:%03d  %s\n",
         pszFile, nLine, getpid(), syscall(SYS_gettid), ptm->tm_year + 1900, ptm->tm_mon + 1,
         ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec, tb.millitm, szMsg);
 #else
-    fprintf(fp, "P=%-7d T=%-7ld T=%04d%02d%02d %02d%02d%02d:%03d  %s\n",
+    fprintf(fp, "P=%d|T=%-7ld|D=%04d%02d%02d %02d%02d%02d:%03d  %s\n",
         getpid(), syscall(SYS_gettid), ptm->tm_year + 1900, ptm->tm_mon + 1,
         ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec, tb.millitm, szMsg);
 #endif
@@ -1378,10 +1378,7 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
         pstSavm->m_bWork = pstCon->m_bWork;
         pstSavm->m_pstWork = pstCon->m_pstWork;
         if(RC_SUCC != lReplace(pstSavm, pvData))
-        {
             pstFace->m_lErrno = pstSavm->m_lErrno;
-            Tlog("TvmReplace error, %d, %s", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
-        }
         else
         {
             pstFace->m_lRows = pstSavm->m_lEffect;
@@ -1394,10 +1391,7 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
         pstSavm->m_bWork = pstCon->m_bWork;
         pstSavm->m_pstWork = pstCon->m_pstWork;
         if(RC_SUCC != lUpdate(pstSavm, pvData))
-        {
             pstFace->m_lErrno = pstSavm->m_lErrno;
-            Tlog("TvmUpdate error, %d, %s", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
-        }
         else
         {
             pstFace->m_lRows = pstSavm->m_lEffect;
@@ -1410,10 +1404,7 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
         pstSavm->m_bWork = pstCon->m_bWork;
         pstSavm->m_pstWork = pstCon->m_pstWork;
         if(RC_SUCC != lDelete(pstSavm))
-        {
             pstFace->m_lErrno = pstSavm->m_lErrno;
-            Tlog("TvmDelete error, %d, %s", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
-        }
         else
         {
             pstFace->m_lDLen = pstSavm->m_lEType;
@@ -1427,39 +1418,28 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
         pstSavm->m_pstWork = pstCon->m_pstWork;
         if(RC_SUCC == lReplace(pstSavm, pvData))
             pstCon->m_pstWork = pstSavm->m_pstWork;
-        else
-            Tlog("AsyReplace error, %d, %s", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
         return RC_SUCC;
     case  OPERAYS_UPDATE:
         pstSavm->m_bWork = pstCon->m_bWork;
         pstSavm->m_pstWork = pstCon->m_pstWork;
         if(RC_SUCC == lUpdate(pstSavm, pvData))
             pstCon->m_pstWork = pstSavm->m_pstWork;
-        else
-            Tlog("AsyUpdate error, %d, %s", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
         return RC_SUCC;
     case  OPERAYS_DELETE:
         pstSavm->m_bWork = pstCon->m_bWork;
         pstSavm->m_pstWork = pstCon->m_pstWork;
         if(RC_SUCC == lDelete(pstSavm))
             pstCon->m_pstWork = pstSavm->m_pstWork;
-        else
-            Tlog("AsyDelete error, %d, %s", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
         return RC_SUCC;
     case  OPERAYS_QUEPUSH:
         if(RC_SUCC != lPush(pstSavm))
-        {
-            Tlog("Asypush error, %d, %s", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
             pstFace->m_lRows = pstSavm->m_lEffect;
-        }
         return RC_SUCC;
     case  OPERAYS_INSERT:
         pstSavm->m_bWork = pstCon->m_bWork;
         pstSavm->m_pstWork = pstCon->m_pstWork;
         if(RC_SUCC == lInsert(pstSavm))
             pstCon->m_pstWork = pstSavm->m_pstWork;
-        else
-            Tlog("AsyInsert error, %d, %s", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
         return RC_SUCC;
     case  OPERATE_QUEPOPS:
         lPopup(pstSavm, pstFace->m_lFind, pstFace->m_lErrno, (size_t *)&pstFace->m_lRows, 
@@ -1491,10 +1471,7 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
         return RC_SUCC;
     case  OPERATE_QUEPUSH:
         if(RC_SUCC != lPush(pstSavm))
-        {
             pstFace->m_lErrno = pstSavm->m_lErrno;
-            Tlog("TvmPush error, %d, %s", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
-        }
         else 
             pstFace->m_lRows  = pstSavm->m_lEffect;
         lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
@@ -1503,10 +1480,7 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
         pstSavm->m_bWork = pstCon->m_bWork;
         pstSavm->m_pstWork = pstCon->m_pstWork;
         if(RC_SUCC != lInsert(pstSavm))
-        {
             pstFace->m_lErrno = pstSavm->m_lErrno;
-            Tlog("TvmInsert error, %d, %s", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
-        }
         else 
             pstFace->m_lRows  = pstSavm->m_lEffect;
         pstCon->m_pstWork = pstSavm->m_pstWork;
@@ -1514,10 +1488,7 @@ long    lEventOperate(SATvm *pstSavm, SKCon *pstCon, TFace *pstFace, char *pvDat
         return RC_SUCC;
     case  OPERATE_TRCATE:
         if(RC_SUCC != lTruncate(pstSavm, pstFace->m_table))
-        {
             pstFace->m_lErrno = pstSavm->m_lErrno;
-            Tlog("TvmTruncate error, %d, %s", pstSavm->m_lErrno, sGetTError(pstSavm->m_lErrno));
-        }
         else
             pstFace->m_lRows  = pstSavm->m_lEffect;
         lSendBuffer(pstCon->m_skSock, (void *)pstFace, sizeof(TFace));
