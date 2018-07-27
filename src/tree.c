@@ -10441,12 +10441,12 @@ long    _lReplaceIndex(SATvm *pstSavm, RunTime *pstRun, TABLE t, void *pvUpdate)
 
     if(NULL == (pstTree = (SHTree *)pSearchTree(pvAddr, pstRoot, szOld, lGetIdxLen(t))))
     {
-        // If don't find it, so insert
+        TFree(pvData);
         pstSavm->pstVoid = pvUpdate;
         lRet = __lInsert(pstSavm, pstRun, t, 0);
         pthread_rwlock_unlock(prwLock);    
-        TFree(pvData);
-        return lRet;
+        if(RC_SUCC != lRet)    return RC_FAIL;
+        return lRecordWork(pstSavm, pstSavm->pstVoid, OPERATE_INSERT);
     }
 
     lData = pstTree->m_lData;
@@ -10593,11 +10593,11 @@ long    _lReplaceGroup(SATvm *pstSavm, RunTime *pstRun, TABLE t, void *pvUpdate)
     if(NULL == (pstTree = pSearchTree(pvAddr, pstRoot, szOld, lGetGrpLen(t))))
     {
         TFree(pvData);
-        // If don't find it, then insert
         pstSavm->pstVoid = pvUpdate;
         lNext = __lInsert(pstSavm, pstRun, t, 0);
         pthread_rwlock_unlock(prwLock);
-        return lNext;
+        if(RC_SUCC != lNext)    return RC_FAIL;
+        return lRecordWork(pstSavm, pstSavm->pstVoid, OPERATE_INSERT);
     }
 
     pstSavm->m_lEffect = 0;
@@ -10677,12 +10677,12 @@ long    _lReplaceGroup(SATvm *pstSavm, RunTime *pstRun, TABLE t, void *pvUpdate)
 
     if(0 == pstSavm->m_lEffect)
     {
-        // If don't find it, then insert
+        TFree(pvData);
         pstSavm->pstVoid = pvUpdate;
         lNext = __lInsert(pstSavm, pstRun, t, 0);
         pthread_rwlock_unlock(prwLock);    
-        TFree(pvData);
-        return lNext;
+        if(RC_SUCC != lNext)    return RC_FAIL;
+        return lRecordWork(pstSavm, pstSavm->pstVoid, OPERATE_INSERT);
     }
 
     pthread_rwlock_unlock(prwLock);
@@ -10738,12 +10738,12 @@ long    _lReplaceHash(SATvm *pstSavm, RunTime *pstRun, TABLE t, void *pvUpdate)
 
     if(NULL == (pstHash = (SHTree *)(pvAddr + lOffset)))
     {
-        // If don't find it, then insert
-        pstSavm->pstVoid = pvUpdate;
-        lNext =  __lInsert(pstSavm, pstRun, t, 0);
-        pthread_rwlock_unlock(prwLock);    
         TFree(pvData);
-        return lNext;
+        pstSavm->pstVoid = pvUpdate;
+        lNext = __lInsert(pstSavm, pstRun, t, 0);
+        pthread_rwlock_unlock(prwLock);    
+        if(RC_SUCC != lNext)    return RC_FAIL;
+        return lRecordWork(pstSavm, pstSavm->pstVoid, OPERATE_INSERT);
     }
 
     pstSavm->m_lEffect = 0;
@@ -10825,12 +10825,12 @@ long    _lReplaceHash(SATvm *pstSavm, RunTime *pstRun, TABLE t, void *pvUpdate)
 
     if(0 == pstSavm->m_lEffect)
     {
-        // If don't find it, then insert
+        TFree(pvData);
         pstSavm->pstVoid = pvUpdate;
         lNext = __lInsert(pstSavm, pstRun, t, 0);
         pthread_rwlock_unlock(prwLock);    
-        TFree(pvData);
-        return lNext;
+        if(RC_SUCC != lNext)    return RC_FAIL;
+        return lRecordWork(pstSavm, pstSavm->pstVoid, OPERATE_INSERT);
     }
 
     pthread_rwlock_unlock(prwLock);
@@ -10929,12 +10929,12 @@ long    _lTruckReplace(SATvm *pstSavm, RunTime *pstRun, TABLE t, void *pvUpdate)
 
     if(0 == pstSavm->m_lEffect)
     {
-        // If don't find it, so insert
+        TFree(pvData);
         pstSavm->pstVoid = pvUpdate;
         lRet = __lInsert(pstSavm, pstRun, t, 0);
         pthread_rwlock_unlock(prwLock);    
-        TFree(pvData);
-        return lRet;
+        if(RC_SUCC != lRet)    return RC_FAIL;
+        return lRecordWork(pstSavm, pstSavm->pstVoid, OPERATE_INSERT);
     }
 
     pthread_rwlock_unlock(prwLock);
