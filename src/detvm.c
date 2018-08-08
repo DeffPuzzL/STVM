@@ -152,13 +152,13 @@ void    vDebugTable(TABLE t, long eType)
         }
     }                
 
-    if(eType & DEBUG_UNIQ_IDEX)
+    if(eType & DEBUG_UNIQ_IDEX && (((TblDef *)pstRun->m_pvAddr)->m_lIType & UNQIUE))
     {
         fprintf(stdout, "\n===================================UNIQUE_INDEX====================="
             "==============lValid(%ld)=========================\n", lGetTblValid(t));
         if(eType & DEBUG_IDEX_DALL)
         {
-            for(i = 0; i < lGetTblRow(t); i ++)
+            for(i = 0; i < lGetTblRow(t) < 3 ? 3 : lGetTblRow(t); i ++)
             {
                 pstTree = (SHTree *)(pstRun->m_pvAddr + lGetIdxPos(t) + i * sizeof(SHTree));
                 vPrintHex(pstTree->m_szIdx, pstTree->m_lIdx, 0);
@@ -170,11 +170,11 @@ void    vDebugTable(TABLE t, long eType)
         }
         else
         {
-            for(i = 0; i < lGetTblValid(t); i ++)
+            for(i = 0; i < (lGetTblValid(t) < 3 ? 3 : lGetTblValid(t)); i ++)
             {
                 pstTree = (SHTree *)(pstRun->m_pvAddr + lGetIdxPos(t) + i * sizeof(SHTree));
-                if(SELF_POS_UNUSE == pstTree->m_lSePos || NODE_NULL == pstTree->m_lSePos)
-                    continue;
+//                if(SELF_POS_UNUSE == pstTree->m_lSePos || NODE_NULL == pstTree->m_lSePos)
+//                    continue;
 
                 vPrintHex(pstTree->m_szIdx, pstTree->m_lIdx, 0);
                 fprintf(stdout, "NODE:[%6ld]->(%02ld), Idx:[%15s](%6ld), Color[%ld], lSePos:[%4ld], "
@@ -185,7 +185,7 @@ void    vDebugTable(TABLE t, long eType)
         }
     }
 
-    if(eType & DEBUG_GROP_IDEX)
+    if(eType & DEBUG_GROP_IDEX && (((TblDef *)pstRun->m_pvAddr)->m_lIType & NORMAL))
     {
         fprintf(stdout, "\n===================================INDEX_GROUP====================="
             "==============Valid:%ld, Group:%ld================\n", lGetTblValid(t), lGetTblGroup(t));
@@ -203,11 +203,11 @@ void    vDebugTable(TABLE t, long eType)
         }
         else
         {
-            for(i = 0; i < lGetTblValid(t); i ++)
+            for(i = 0; i < (lGetTblValid(t) < 3 ? 3 : lGetTblValid(t)); i ++)
             {
                 pstTree = (SHTree *)(pstRun->m_pvAddr + lGetGrpPos(t) + i * sizeof(SHTree));
-                if(SELF_POS_UNUSE == pstTree->m_lSePos || NODE_NULL == pstTree->m_lSePos)
-                    continue;
+//                if(SELF_POS_UNUSE == pstTree->m_lSePos || NODE_NULL == pstTree->m_lSePos)
+//                    continue;
             
                 vPrintHex(pstTree->m_szIdx, pstTree->m_lIdx, 0);
                 fprintf(stdout, "NODE:[%ld](%02ld), Idx:[%4s](%ld)(%2ld), Color[%ld], lSePos:[%4ld],"
@@ -218,7 +218,7 @@ void    vDebugTable(TABLE t, long eType)
         }
     }
 
-    if(eType & DEBUG_GROP_LIST)
+    if(eType & DEBUG_GROP_LIST && (((TblDef *)pstRun->m_pvAddr)->m_lIType & NORMAL))
     {
         fprintf(stdout, "\n=================================INDEX_LIST========================"
             "==============Valid(%ld)=============\n", lGetTblValid(t));
@@ -235,11 +235,11 @@ void    vDebugTable(TABLE t, long eType)
         }
         else
         {
-            for(i = 0, j = lGetListOfs(t); i < lGetTblValid(t); i ++)
+            for(i = 0, j = lGetListOfs(t); i < (lGetTblValid(t) < 3 ? 3 : lGetTblValid(t)); i ++)
             {
                 pstList = (SHList *)(pstRun->m_pvAddr + j + i * sizeof(SHList));
-                if(SELF_POS_UNUSE == pstList->m_lPos)
-                    continue;
+//                if(SELF_POS_UNUSE == pstList->m_lPos)
+//                    continue;
             
                 fprintf(stdout, "LIST:[%8ld][%02ld], lSePos:[%4ld], lData[%8ld], Node[%8ld], "
                     "Next[%8ld], Last[%8ld]\n" , (void *)pstList - pstRun->m_pvAddr, i, 
@@ -263,7 +263,7 @@ void    vDebugTable(TABLE t, long eType)
         for(i = 0; i < lGetTblRow(t); i ++)
         {
             pstTruck = (void *)(pstRun->m_pvAddr + lGetTblData(t) + i * lGetRowTruck(t));
-            fprintf(stdout, "SePos[%ld]\n", (void *)pstTruck - pstRun->m_pvAddr);
+            fprintf(stdout, "SePos[%ld][%X]\n", (void *)pstTruck - pstRun->m_pvAddr, pstTruck->m_chTag);
             vPrintHex(pstTruck->m_pvData, lGetRowSize(t), 0);
         }
     }

@@ -158,7 +158,7 @@ void    vTraceLog(const char *pszFile, int nLine, const char *fmt, ...)
         pszFile, nLine, getpid(), syscall(SYS_gettid), ptm->tm_year + 1900, ptm->tm_mon + 1,
         ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec, tb.millitm, szMsg);
 #else
-    fprintf(fp, "P=%d|T=%-7ld|D=%04d%02d%02d %02d%02d%02d:%03d  %s\n",
+    fprintf(fp, "P=%d|T=%d|D=%04d%02d%02d %02d%02d%02d:%03d  %s\n",
         getpid(), syscall(SYS_gettid), ptm->tm_year + 1900, ptm->tm_mon + 1,
         ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec, tb.millitm, szMsg);
 #endif
@@ -4281,9 +4281,15 @@ void*    pParsePacket(SATvm *pstSavm, void *pstVoid, TFace *pstFace, void *pvBuf
 
         pstCond = &pstSavm->stUpdt;
         memcpy(&pstCond->uFldcmp, pvData, sizeof(uint));
-        if(0 == pstCond->uFldcmp)    return pvBuffer;
+        if(0 == pstCond->uFldcmp)
+        {
+            memset(pvBuffer, 0, pstFace->m_lDLen);
+            return pvBuffer;
+        }
 
-        for(i = 0, pvData += sizeof(uint), pstVoid += pstFace->m_lDLen; i < pstCond->uFldcmp; i ++)
+        pstVoid += pstFace->m_lDLen;
+        memset(pstVoid, 0, pstFace->m_lDLen);
+        for(i = 0, pvData += sizeof(uint); i < pstCond->uFldcmp; i ++)
         {
             pstFld = &pstCond->stFdKey[i];
             memcpy(pstFld, pvData, sizeof(FdKey));
@@ -5026,8 +5032,6 @@ long    lTvmInsert(SATvm *pstSavm)
     checkbuffer(pstSavm, pstRun, 1);
     memcpy(pstRun->pstVoid + sizeof(TFace), pstSavm->pstVoid, pstSavm->lSize);
 
-fprintf(stderr, "Benum:%d, Uenum:%d, TABLE:%d, uint:%d, uint:%d, size_t:%d\n", pstFace->m_enum,
-   pstFace->m_lFind, pstFace->m_table, pstFace->m_lDLen, pstFace->m_lErrno, pstFace->m_lRows);
     if(lWrite != lSendBuffer(pstSavm->m_skSock, (void *)pstRun->pstVoid, lWrite))
     {
         pstSavm->m_lErrno = SOCK_COM_EXCP;

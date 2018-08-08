@@ -180,6 +180,8 @@ void    vPrintHex(char *s, long lIdx, bool bf)
 {
     int     i = 0;
     FILE    *fp = NULL;    
+    
+    if(lIdx <= 0)   return ;
 
     if(!bf)
     {    
@@ -3375,6 +3377,7 @@ SHTree* pInsertGroup(SATvm *pstSavm, void *pvAddr, SHTree *pstRoot, void *psvIdx
                 return NULL;
             }
 
+            *ppstTruck = pstTruck;
             return pstRoot;
         }
     }
