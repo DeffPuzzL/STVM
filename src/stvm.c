@@ -195,7 +195,7 @@ int    getpack()
         case 32:
             return 8;
         default:
-            fprintf(stdout, "当前环境对齐数值(%d)过大\n", pack);
+            fprintf(stdout, "number(%d) of alignment is too large\n", pack);
             fflush(stdout);
             return -1;
         }
@@ -213,7 +213,7 @@ int    getpack()
         case 24:
             return 8;
         default:
-            fprintf(stdout, "当前环境对齐数值(%d)过大\n", pack);
+            fprintf(stdout, "number(%d) of alignment is too large\n", pack);
             fflush(stdout);
             return -1;
         }
@@ -568,7 +568,10 @@ long    lIndexField(char *s, TblDef *ps, Uenum em)
             strimcrlf(szField);
             strimall(szField);
             if(NULL == (pstKey = pFindField(ps->m_stKey, ps->m_lIdxNum, szField)))
+            {
+                fprintf(stderr, "field %s not define\n", szField);
                 return RC_FAIL;
+            }
 
             strcpy(ps->m_stIdxUp[ps->m_lIdxUp].m_szField, szField);
             ps->m_stIdxUp[ps->m_lIdxUp].m_lFrom = pstKey->m_lFrom;
@@ -577,8 +580,11 @@ long    lIndexField(char *s, TblDef *ps, Uenum em)
             ps->m_lIdxLen += pstKey->m_lLen;
             ps->m_lIdxUp ++;
         }
-        if(0 == ps->m_lIdxUp)
+        if(0 == ps->m_lIdxUp || ps->m_lIdxLen > MAX_INDEX_LEN)
+        {
+            fprintf(stderr, "index is too long or index field lost\n");
             return RC_FAIL;
+        }
         return RC_SUCC;
     }
     else if(NORMAL == em)
@@ -590,7 +596,10 @@ long    lIndexField(char *s, TblDef *ps, Uenum em)
             strimcrlf(szField);
             strimall(szField);
             if(NULL == (pstKey = pFindField(ps->m_stKey, ps->m_lIdxNum, szField)))
+            {
+                fprintf(stderr, "field %s not define\n", szField);
                 return RC_FAIL;
+            }
 
             strcpy(ps->m_stGrpUp[ps->m_lGrpUp].m_szField, szField);
             ps->m_stGrpUp[ps->m_lGrpUp].m_lFrom = pstKey->m_lFrom;
@@ -600,8 +609,11 @@ long    lIndexField(char *s, TblDef *ps, Uenum em)
             ps->m_lGrpUp ++;
         }
 
-        if(0 == ps->m_lGrpUp)
+        if(0 == ps->m_lGrpUp || ps->m_lGrpLen > MAX_INDEX_LEN)
+        {
+            fprintf(stderr, "index is too long or index field lost\n");
             return RC_FAIL;
+        }
         return RC_SUCC;
     }
     else if(HASHID == em)
@@ -613,7 +625,11 @@ long    lIndexField(char *s, TblDef *ps, Uenum em)
             strimcrlf(szField);
             strimall(szField);
             if(NULL == (pstKey = pFindField(ps->m_stKey, ps->m_lIdxNum, szField)))
+            {
+                fprintf(stderr, "field %s not define\n", szField);
                 return RC_FAIL;
+            }
+
             strcpy(ps->m_stGrpUp[ps->m_lGrpUp].m_szField, szField);
             ps->m_stGrpUp[ps->m_lGrpUp].m_lFrom = pstKey->m_lFrom;
             ps->m_stGrpUp[ps->m_lGrpUp].m_lLen  = pstKey->m_lLen;
@@ -622,11 +638,15 @@ long    lIndexField(char *s, TblDef *ps, Uenum em)
             ps->m_lGrpUp ++;
         }
 
-        if(0 == ps->m_lGrpUp)
+        if(0 == ps->m_lGrpUp || ps->m_lGrpLen > MAX_INDEX_LEN)
+        {
+            fprintf(stderr, "index is too long or index field lost\n");
             return RC_FAIL;
+        }
         return RC_SUCC;
     }
 
+    fprintf(stderr, "create index syntax error\n");
     return RC_FAIL;
 }
 
@@ -788,10 +808,7 @@ long    lAnalysIndex(char *s, long len, TblDef *ps, bool bQueue)
         }
 
         if(RC_SUCC != lRet)
-        {
-            fprintf(stderr, "parse create syntax error\n");
             return RC_FAIL;
-        }
     }
 
     return RC_SUCC;
@@ -2629,6 +2646,8 @@ long    lParseAdorn(SATvm *pstSavm, char *pszAdorn, long lCount, TField *pstFiel
     long    lNumber, i, j;
     char    szWord[64], szField[512], szOrder[512];
 
+    sltrim(pszAdorn);
+    srtrim(pszAdorn);
     if(0 == strlen(pszAdorn))
         return RC_SUCC;
 
