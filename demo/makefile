@@ -28,14 +28,11 @@ REPLACE=replace
 POPUP=popup
 PRESSURE=press_demo
 TVMPUSH=tvmpush
-TVMINSERT=tvminsert
 ASYPUSH=asypush
 THREAD=thread_demo
 
-all: $(CREATE) $(INSERT) $(QUEUE) $(PUSH) $(POP) $(SELECT) $(QUERY) $(DELETE) $(UPDATE) $(COUNT) $(GROUP) $(EXTREME) $(TRUNCATE) $(DROP) $(PRESSURE) $(CLICK) $(POPUP) $(REPLACE) $(TVMPUSH) $(ASYPUSH) $(TVMPOP) $(TVMREPLACE) $(THREAD) $(TVMINSERT) clean
+all: $(CREATE) $(INSERT) $(QUEUE) $(PUSH) $(POP) $(SELECT) $(QUERY) $(DELETE) $(UPDATE) $(COUNT) $(GROUP) $(EXTREME) $(TRUNCATE) $(DROP) $(PRESSURE) $(CLICK) $(POPUP) $(REPLACE) $(TVMPUSH) $(ASYPUSH) $(TVMPOP) $(TVMREPLACE) $(THREAD) clean
 $(CREATE): create_table.o
-	$(CC) -o $@ $< $(LIBDIR)
-$(TVMINSERT): tvminsert.o
 	$(CC) -o $@ $< $(LIBDIR)
 $(TVMREPLACE): tvmreplace.o
 	$(CC) -o $@ $< $(LIBDIR)
