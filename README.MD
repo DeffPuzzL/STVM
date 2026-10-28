@@ -71,7 +71,7 @@ STVM也提供一个类型sqlpuls类型简单工具。
 
 建议以单机模式64位下运行，将性能发挥在极致。
 
-**作者：Savens Liu**
+**作者：Savan Liu**
 
 **邮箱：deffpuzzl@qq.com**
 
